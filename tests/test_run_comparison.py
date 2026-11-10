@@ -173,3 +173,62 @@ def test_v2_rejects_inconsistent_fingerprints_in_one_run(tmp_path):
         file.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
     with pytest.raises(ValueError, match="Inconsistent"):
         compare_results([first, second], tmp_path / "comparison.md")
+
+
+def test_v2_comparison_shows_public_and_verified_outcomes(tmp_path):
+    source = write_run(tmp_path, "source", outcomes=(False, False))
+    tests = write_run(
+        tmp_path, "test_context", strategy="feedback", context="tests",
+        outcomes=(False, False),
+    )
+
+    for file, passed in ((source, ("syntax",)), (tests, ("syntax", "csv"))):
+        records = [json.loads(line) for line in file.read_text().splitlines()]
+        for record in records:
+            info = record["benchmark"]
+            info.update({
+                "suite_version": 2,
+                "suite_sha256": "a" * 64,
+                "task_sha256": ("b" if info["task_id"] == "syntax" else "c") * 64,
+                "repository_sha256": "d" * 64,
+                "verification_sha256": "e" * 64,
+            })
+            record["visible_improved"] = info["task_id"] in passed
+            record["candidate"] = {"passed": record["visible_improved"]}
+            record["verification"] = {"passed": False}
+        file.write_text("\n".join(json.dumps(row) for row in records) + "\n")
+
+    report = tmp_path / "comparison.md"
+    result = compare_results([source, tests], report)
+    rows = result["runs"]
+    assert rows[0]["public_repairs"] == 2
+    assert rows[1]["public_repairs"] == 4
+    assert rows[1]["public_repair_rate"] == 1.0
+    assert rows[0]["repair_rate"] == rows[1]["repair_rate"] == 0
+
+    content = report.read_text()
+    assert "Public repairs | Public rate | Public change | Verified repairs" in content
+    assert "| source | example:3b | single | source | 1 | 2/4 | 50.0% | +0.0 pp | 0/4 | 0.0% | +0.0 pp |" in content
+    assert "| test_context | example:3b | feedback | tests | 2 | 4/4 | 100.0% | +50.0 pp | 0/4 | 0.0% | +0.0 pp |" in content
+    assert "| csv | Public 0/2, verified 0/2 | Public 2/2, verified 0/2 |" in content
+
+
+def test_v2_missing_visible_improved_not_counted_as_public_repair(tmp_path):
+    source = write_run(tmp_path, "source", outcomes=(False, False))
+    tests = write_run(tmp_path, "other", outcomes=(False, False))
+
+    for file in (source, tests):
+        rows = [json.loads(line) for line in file.read_text().splitlines()]
+        for record in rows:
+            record["benchmark"].update({
+                "suite_version": 2,
+                "suite_sha256": "a" * 64,
+                "task_sha256": "b" * 64,
+                "repository_sha256": "c" * 64,
+                "verification_sha256": "d" * 64,
+            })
+        file.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+
+    result = compare_results([source, tests], tmp_path / "result.md")
+    assert all(row["public_repairs"] == 0 for row in result["runs"])
+    assert all(row["public_repair_rate"] == 0 for row in result["runs"])

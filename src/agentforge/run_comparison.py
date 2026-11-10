@@ -56,6 +56,7 @@ def _read_run(path: Path) -> Run:
 def _stats(records: list[dict]) -> dict:
     attempts = len(records)
     repaired = sum(record["improved"] for record in records)
+    public_repairs = sum(record.get("visible_improved") is True for record in records)
     model_calls = sum(record.get("attempts_used", 1) for record in records)
     if any(type(record.get("attempts_used", 1)) is not int
            or record.get("attempts_used", 1) < 1 for record in records):
@@ -64,6 +65,8 @@ def _stats(records: list[dict]) -> dict:
         "attempts": attempts,
         "repaired": repaired,
         "repair_rate": repaired / attempts,
+        "public_repairs": public_repairs,
+        "public_repair_rate": public_repairs / attempts,
         "errors": sum(record.get("error") is not None for record in records),
         "model_calls": model_calls,
         "median_seconds": statistics.median(
@@ -123,7 +126,10 @@ def _validate_runs(paths: list[Path], output: Path) -> list[Run]:
 
 def render_comparison(runs: list[Run]) -> str:
     """Format a comparison with the first run as the reference."""
-    baseline = _stats(runs[0].records)["repair_rate"]
+    baseline_stats = _stats(runs[0].records)
+    baseline = baseline_stats["repair_rate"]
+    baseline_public = baseline_stats["public_repair_rate"]
+    version = _case_fingerprints(runs[0])[0]
     lines = [
         "# AgentForge benchmark comparison",
         "",
@@ -131,23 +137,46 @@ def render_comparison(runs: list[Run]) -> str:
         "",
         "The first file is the reference. Differences are percentage points, not relative percentages.",
         "Model calls count recorded attempts; older single-attempt records count as one call per trial.",
-        "Matching task IDs and trial numbers do not establish identical task content or paired randomness.",
+        "Matching task IDs and trial numbers do not establish paired randomness.",
+        "Version 2 comparisons also require matching task and verification fingerprints.",
         "",
         "## Summary",
         "",
-        "| Run | Model | Strategy | Context | Max attempts | Repairs | Rate | Change | Errors | Calls | Median time (s) |",
-        "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
+    if version == 2:
+        lines.extend([
+            "| Run | Model | Strategy | Context | Max attempts | Public repairs | Public rate | Public change | Verified repairs | Verified rate | Verified change | Errors | Calls | Median time (s) |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ])
+    else:
+        lines.extend([
+            "| Run | Model | Strategy | Context | Max attempts | Repairs | Rate | Change | Errors | Calls | Median time (s) |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ])
     for run in runs:
         stats = _stats(run.records)
         delta = 100 * (stats["repair_rate"] - baseline)
-        lines.append(
+        prefix = (
             f"| {_safe_cell(run.label)} | {_safe_cell(run.model)} | "
             f"{run.strategy} | {run.context} | {run.max_attempts} | "
-            f"{stats['repaired']}/{stats['attempts']} | "
-            f"{stats['repair_rate']:.1%} | {delta:+.1f} pp | "
-            f"{stats['errors']} | {stats['model_calls']} | {stats['median_seconds']:.3f} |"
         )
+        suffix = (
+            f"{stats['errors']} | {stats['model_calls']} | "
+            f"{stats['median_seconds']:.3f} |"
+        )
+        if version == 2:
+            public_delta = 100 * (stats["public_repair_rate"] - baseline_public)
+            lines.append(
+                f"{prefix}{stats['public_repairs']}/{stats['attempts']} | "
+                f"{stats['public_repair_rate']:.1%} | {public_delta:+.1f} pp | "
+                f"{stats['repaired']}/{stats['attempts']} | "
+                f"{stats['repair_rate']:.1%} | {delta:+.1f} pp | {suffix}"
+            )
+        else:
+            lines.append(
+                f"{prefix}{stats['repaired']}/{stats['attempts']} | "
+                f"{stats['repair_rate']:.1%} | {delta:+.1f} pp | {suffix}"
+            )
 
     lines.extend([
         "",
@@ -163,7 +192,15 @@ def render_comparison(runs: list[Run]) -> str:
             records = [record for record in run.records
                        if record["benchmark"]["task_id"] == task_id]
             stats = _stats(records)
-            rates.append(f"{stats['repaired']}/{stats['attempts']} ({stats['repair_rate']:.1%})")
+            if version == 2:
+                rates.append(
+                    f"Public {stats['public_repairs']}/{stats['attempts']}, "
+                    f"verified {stats['repaired']}/{stats['attempts']}"
+                )
+            else:
+                rates.append(
+                    f"{stats['repaired']}/{stats['attempts']} ({stats['repair_rate']:.1%})"
+                )
         lines.append(f"| {_safe_cell(task_id)} | " + " | ".join(rates) + " |")
 
     return "\n".join(lines).rstrip() + "\n"
