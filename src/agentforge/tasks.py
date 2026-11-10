@@ -37,7 +37,7 @@ def load_task(path: Path) -> CodingTask:
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid task JSON: {exc.msg}") from exc
     if not isinstance(data, dict):
-        raise ValueError("Task definition must be a JSON object")
+        raise TypeError("Task definition must be a JSON object")
     if data.get("schema_version") != 1 or type(data.get("schema_version")) is not int:
         raise ValueError("Unsupported task schema_version; expected 1")
     required = {"schema_version", "task_id", "title", "repository", "check", "timeout"}
