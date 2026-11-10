@@ -50,6 +50,36 @@ def _task_summary(records: list[dict], version: int) -> dict:
             raise TypeError("Recorded diff must be text")
         patches.append(hashlib.sha256(diff.encode("utf-8")).hexdigest())
     counts = Counter(patches)
+    tracked = 0
+    recorded_attempts = 0
+    rejected = 0
+    transitions = 0
+    attempt_diffs = []
+    for record in records:
+        details = record.get("attempt_details")
+        if details is None:
+            continue
+        if not isinstance(details, list):
+            raise TypeError("Attempt details must be a list")
+        tracked += 1
+        for attempt in details:
+            if not isinstance(attempt, dict):
+                raise TypeError("Each attempt detail must be an object")
+            recorded_attempts += 1
+            if attempt.get("status") == "proposal_rejected":
+                rejected += 1
+            if attempt.get("public_check_improved") is True:
+                transitions += 1
+            diff = attempt.get("diff")
+            if diff is None or diff == "":
+                continue
+            if not isinstance(diff, str):
+                raise TypeError("Attempt diff must be text")
+            computed = hashlib.sha256(diff.encode("utf-8")).hexdigest()
+            if attempt.get("patch_sha256") != computed:
+                raise ValueError("Attempt patch fingerprint does not match its diff")
+            attempt_diffs.append(computed)
+    attempt_counts = Counter(attempt_diffs)
     return {
         "task_id": records[0]["benchmark"]["task_id"],
         "trials": len(records),
@@ -60,6 +90,13 @@ def _task_summary(records: list[dict], version: int) -> dict:
         "unique_patches": len(counts),
         "repeated_patches": sum(count - 1 for count in counts.values()),
         "missing_diffs": len(records) - len(patches),
+        "tracked_trials": tracked,
+        "recorded_attempts": recorded_attempts,
+        "rejected_attempts": rejected,
+        "public_check_transitions": transitions,
+        "attempt_patch_records": len(attempt_diffs),
+        "unique_attempt_patches": len(attempt_counts),
+        "repeated_attempt_patches": sum(count - 1 for count in attempt_counts.values()),
         "patches": [
             {"sha256": digest, "trials": count}
             for digest, count in sorted(counts.items())
@@ -107,6 +144,17 @@ def summarize_audit(records: list[dict]) -> list[dict]:
             "unique_patches": sum(item["unique_patches"] for item in summaries),
             "repeated_patches": sum(item["repeated_patches"] for item in summaries),
             "missing_diffs": sum(item["missing_diffs"] for item in summaries),
+            "tracked_trials": sum(item["tracked_trials"] for item in summaries),
+            "recorded_attempts": sum(item["recorded_attempts"] for item in summaries),
+            "rejected_attempts": sum(item["rejected_attempts"] for item in summaries),
+            "public_check_transitions": sum(
+                item["public_check_transitions"] for item in summaries
+            ),
+            "attempt_patch_records": sum(item["attempt_patch_records"] for item in summaries),
+            "unique_attempt_patches": sum(item["unique_attempt_patches"] for item in summaries),
+            "repeated_attempt_patches": sum(
+                item["repeated_attempt_patches"] for item in summaries
+            ),
             "duplicate_trial_ids": duplicates,
             "tasks": summaries,
         })
@@ -161,6 +209,24 @@ def render_audit(audits: list[dict]) -> str:
                 f"{task['unique_patches']} | {task['repeated_patches']} | "
                 f"{task['missing_diffs']} |"
             )
+        if run["tracked_trials"]:
+            lines.extend([
+                "",
+                "### Individual proposal attempts",
+                "",
+                "| Measurement | Count |",
+                "| --- | ---: |",
+                f"| Trials with per-attempt records | {run['tracked_trials']} |",
+                f"| Recorded proposal attempts | {run['recorded_attempts']} |",
+                f"| Rejected proposals | {run['rejected_attempts']} |",
+                f"| Public check transitions to passing | {run['public_check_transitions']} |",
+                f"| Nonempty individual attempt diffs | {run['attempt_patch_records']} |",
+                f"| Distinct individual attempt diffs | {run['unique_attempt_patches']} |",
+                f"| Repeated individual attempt diffs | {run['repeated_attempt_patches']} |",
+                "",
+                "Counts reflect records with attempt_details. Older records only include",
+                "combined trial diffs, so per-attempt counts are unavailable for them.",
+            ])
         lines.extend(["", "### Patch fingerprints", ""])
         for task in run["tasks"]:
             if not task["patches"]:
@@ -206,6 +272,12 @@ def audit_results(results_file: Path, output: Path) -> dict:
                 "unique_patches": run["unique_patches"],
                 "repeated_patches": run["repeated_patches"],
                 "missing_diffs": run["missing_diffs"],
+                "tracked_trials": run["tracked_trials"],
+                "recorded_attempts": run["recorded_attempts"],
+                "unique_attempt_patches": run["unique_attempt_patches"],
+                "repeated_attempt_patches": run["repeated_attempt_patches"],
+                "rejected_attempts": run["rejected_attempts"],
+                "public_check_transitions": run["public_check_transitions"],
                 "duplicate_trial_ids": run["duplicate_trial_ids"],
             }
             for run in audits

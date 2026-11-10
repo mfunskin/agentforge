@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from agentforge.attempt_tracking import checked_attempt
 from agentforge.proposals import CodingAgent, FileEdit, ManifestAgent, validate_edit_path
 from agentforge.runner import run_check
 from agentforge.tasks import load_task
@@ -116,6 +117,11 @@ def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = No
         "verification": verify_candidate,
         "changed_files": [edit.path for edit in edits],
         "diff": difference,
+        "attempt_details": [
+            checked_attempt(
+                1, difference, [edit.path for edit in edits], candidate, baseline["passed"],
+            ),
+        ],
         "trajectory": events,
         "result": {"passed": verified if verified is not None else candidate["passed"]},
     }

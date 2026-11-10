@@ -159,3 +159,76 @@ def test_group_runs_with_different_model_digests():
     rows[0]["benchmark"]["model_digest"] = "a" * 64
     rows[1]["benchmark"]["model_digest"] = "b" * 64
     assert len(summarize_audit(rows)) == 2
+
+
+def test_separate_attempt_patch_fingerprints(tmp_path):
+    import hashlib
+
+    first = "-before\n+attempt-one"
+    second = "-attempt-one\n+attempt-two"
+    rows = [
+        make_record("csv", 1, first + second, public=True, strategy="feedback", calls=2),
+        make_record("csv", 2, first + second, public=True, strategy="feedback", calls=2),
+    ]
+    for record in rows:
+        record["attempt_details"] = [
+            {
+                "attempt": 1,
+                "status": "candidate_checked",
+                "diff": first,
+                "patch_sha256": hashlib.sha256(first.encode()).hexdigest(),
+                "public_check_improved": False,
+            },
+            {
+                "attempt": 2,
+                "status": "candidate_checked",
+                "diff": second,
+                "patch_sha256": hashlib.sha256(second.encode()).hexdigest(),
+                "public_check_improved": True,
+            },
+        ]
+    result_file = save(tmp_path, "feedback.jsonl", rows)
+    result = audit_results(result_file, tmp_path / "feedback_audit.md")
+    run = result["runs"][0]
+    assert run["trials"] == 2
+    assert run["unique_patches"] == 1
+    assert run["tracked_trials"] == 2
+    assert run["recorded_attempts"] == 4
+    assert run["unique_attempt_patches"] == 2
+    assert run["repeated_attempt_patches"] == 2
+    assert run["public_check_transitions"] == 2
+    assert "Individual proposal attempts" in (
+        tmp_path / "feedback_audit.md"
+    ).read_text()
+
+
+def test_rejected_proposal_counted_without_patch():
+    rows = [make_record("csv", 1, "+final", strategy="feedback", calls=2)]
+    rows[0]["attempt_details"] = [
+        {"attempt": 1, "status": "proposal_rejected", "diff": None,
+         "patch_sha256": None},
+        {"attempt": 2, "status": "candidate_checked", "diff": "",
+         "patch_sha256": None},
+    ]
+    run = summarize_audit(rows)[0]
+    assert run["recorded_attempts"] == 2
+    assert run["rejected_attempts"] == 1
+    assert run["attempt_patch_records"] == 0
+    assert run["unique_attempt_patches"] == 0
+
+
+def test_historical_records_have_no_per_attempt_coverage():
+    run = summarize_audit([make_record("csv", 1, "+fix")])[0]
+    assert run["tracked_trials"] == 0
+    assert run["recorded_attempts"] == 0
+    assert "Individual proposal attempts" not in render_audit([run])
+
+
+def test_tampered_attempt_sha_rejected():
+    rows = [make_record("csv", 1, "+fix")]
+    rows[0]["attempt_details"] = [
+        {"attempt": 1, "status": "candidate_checked", "diff": "+fix",
+         "patch_sha256": "a" * 64},
+    ]
+    with pytest.raises(ValueError, match="fingerprint"):
+        summarize_audit(rows)
