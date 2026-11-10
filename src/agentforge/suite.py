@@ -10,11 +10,20 @@ from pathlib import Path
 
 from agentforge.comparison import evaluate_agent
 from agentforge.feedback import evaluate_with_feedback
-from agentforge.model_agent import ModelCodingAgent, OllamaClient, TextGenerator, ollama_model_digest
+from agentforge.model_agent import (
+    ModelCodingAgent,
+    OllamaClient,
+    TextGenerator,
+    ollama_model_digest,
+)
 from agentforge.proposals import validate_edit_path
 from agentforge.tasks import load_task
 from agentforge.verification import (
-    directory_digest, file_digest, git_commit, repository_digest, verification_files,
+    directory_digest,
+    file_digest,
+    git_commit,
+    repository_digest,
+    verification_files,
 )
 
 
