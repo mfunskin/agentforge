@@ -11,6 +11,7 @@ from agentforge.benchmark_audit import audit_results
 from agentforge.comparison import compare_proposal, evaluate_agent
 from agentforge.diagnostics import generate_diagnostics
 from agentforge.evaluation import evaluate
+from agentforge.gap_analysis import generate_gap_report
 from agentforge.inspector import inspect_repo
 from agentforge.model_agent import ModelCodingAgent, OllamaClient
 from agentforge.reports import generate_report
@@ -72,6 +73,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     audit.add_argument("file", type=Path)
     audit.add_argument("--output", type=Path, required=True)
+    gaps = benchmark_sub.add_parser(
+        "gaps", help="Summarize public-check and independent verification failures"
+    )
+    gaps.add_argument("file", type=Path)
+    gaps.add_argument("--output", type=Path, required=True)
     report = benchmark_sub.add_parser("report", help="Summarize saved benchmark results")
     report.add_argument("file", type=Path)
     report.add_argument("--output", type=Path, required=True)
@@ -100,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
             result = audit_results(args.file, args.output)
         elif args.command == "benchmark" and args.benchmark_command == "diagnose":
             result = generate_diagnostics(args.file, args.output, limit=args.limit)
+        elif args.command == "benchmark" and args.benchmark_command == "gaps":
+            result = generate_gap_report(args.file, args.output)
         elif args.command == "benchmark" and args.benchmark_command == "report":
             result = generate_report(args.file, args.output)
         elif args.command == "benchmark":

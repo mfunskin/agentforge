@@ -59,3 +59,9 @@ The six original cases appear again in the twelve-case suite. They should not
 be counted as six new observations when combining results from separate suites.
 One trial per task is an initial engineering smoke test, not a statistical
 confidence interval. These are synthetic repairs, not production incidents.
+
+## Diagnose verification gaps
+
+After the evaluation, generate a per-model summary of the public and independent
+checks using `agentforge benchmark gaps runs/v2_twelve_models.jsonl --output
+runs/v2_twelve_gaps.md`. See [verification gap reports](verification_gaps.md).
