@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "request-idempotency-003",
+  "title": "Repair process_once(key, payload, store, handler) to execute a request only once for a nonempty idempotency key and equivalent JSON payload. Return the cached result on identical retries, reject reuse with a changed payload, compare mappings independent of key order, and never cache handler failures.",
+  "repository": "../repos/idempotency",
+  "check": "pytest",
+  "timeout": 30
+}

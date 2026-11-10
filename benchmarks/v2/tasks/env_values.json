@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "env-values-003",
+  "title": "Repair parse_env to parse KEY=VALUE lines, preserve equals signs within values, skip blank and comment lines, accept quoted values including internal whitespace, allow later duplicate keys to override, and reject missing separators or invalid variable names. Whitespace outside values should be stripped.",
+  "repository": "../repos/env_values",
+  "check": "pytest",
+  "timeout": 30
+}
