@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agentforge.comparison import evaluate_agent
+from agentforge.feedback import evaluate_with_feedback
 from agentforge.model_agent import ModelCodingAgent, OllamaClient, TextGenerator
 from agentforge.proposals import validate_edit_path
 from agentforge.tasks import load_task
@@ -101,9 +102,15 @@ def run_suite(
     output: Path | None = None,
     model_timeout: int = 120,
     client_factory: Callable[[str], TextGenerator] | None = None,
+    strategy: str = "single",
+    max_attempts: int = 2,
 ) -> dict:
     """Evaluate every model and task for the same number of independent trials."""
     suite = load_suite(suite_path)
+    if strategy not in {"single", "feedback"}:
+        raise ValueError("strategy must be single or feedback")
+    if type(max_attempts) is not int or not 1 <= max_attempts <= 5:
+        raise ValueError("max_attempts must be an integer between 1 and 5")
     if not 1 <= len(models) <= 5 or len(set(models)) != len(models):
         raise ValueError("Provide between one and five distinct models")
     if any(not isinstance(model, str) or not model.strip() for model in models):
@@ -117,7 +124,8 @@ def run_suite(
     if destination is not None:
         destination.parent.mkdir(parents=True, exist_ok=True)
     metrics = {
-        model: {"attempts": 0, "repaired": 0, "candidate_passed": 0, "errors": 0}
+        model: {"attempts": 0, "repaired": 0, "candidate_passed": 0, "errors": 0,
+                "first_attempt_repairs": 0, "model_calls": 0}
         for model in models
     }
     case_metrics = []
@@ -130,8 +138,16 @@ def run_suite(
                     generator = (client_factory(model) if client_factory is not None
                                  else OllamaClient(model, timeout=model_timeout))
                     agent = ModelCodingAgent(generator, list(case.files))
-                    record = evaluate_agent(case.task_file, agent)
-                    record["error"] = None
+                    if strategy == "feedback":
+                        record = evaluate_with_feedback(
+                            case.task_file, generator, list(case.files),
+                            max_attempts=max_attempts,
+                        )
+                    else:
+                        record = evaluate_agent(case.task_file, agent)
+                        record["error"] = None
+                    if record["error"] is not None:
+                        metrics[model]["errors"] += 1
                 except (OSError, TypeError, ValueError) as exc:
                     record = {
                         "task": {"task_id": case.task_id},
@@ -142,12 +158,15 @@ def run_suite(
                     }
                     metrics[model]["errors"] += 1
                 record["benchmark"] = {
-                    "suite": suite.name, "model": model,
+                    "suite": suite.name, "model": model, "strategy": strategy,
                     "task_id": case.task_id, "iteration": iteration,
                     "duration_seconds": round(time.monotonic() - start, 3),
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
                 metrics[model]["attempts"] += 1
+                metrics[model]["model_calls"] += record.get("attempts_used", 1)
+                if record.get("first_attempt_improved", record["improved"]):
+                    metrics[model]["first_attempt_repairs"] += 1
                 if record["improved"]:
                     metrics[model]["repaired"] += 1
                     repairs += 1
@@ -168,6 +187,8 @@ def run_suite(
     return {
         "suite": suite.name,
         "repeats": repeats,
+        "strategy": strategy,
+        "max_attempts": max_attempts if strategy == "feedback" else 1,
         "total_attempts": sum(stats["attempts"] for stats in metrics.values()),
         "models": metrics,
         "cases": case_metrics,

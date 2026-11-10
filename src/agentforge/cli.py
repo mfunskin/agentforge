@@ -60,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
     suite_run.add_argument("--model", action="append", required=True, dest="models")
     suite_run.add_argument("--repeats", type=int, default=3)
     suite_run.add_argument("--model-timeout", type=int, default=120)
+    suite_run.add_argument("--strategy", choices=["single", "feedback"], default="single")
+    suite_run.add_argument("--max-attempts", type=int, default=2)
     suite_run.add_argument("--output", type=Path, default=Path("runs/benchmarks.jsonl"))
     report = benchmark_sub.add_parser("report", help="Summarize saved benchmark results")
     report.add_argument("file", type=Path)
@@ -86,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
             result = run_suite(
                 args.file, args.models, repeats=args.repeats, output=args.output,
                 model_timeout=args.model_timeout,
+                strategy=args.strategy, max_attempts=args.max_attempts,
             )
         elif args.command == "task" and args.task_command == "solve":
             agent = ModelCodingAgent(

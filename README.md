@@ -13,6 +13,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Repeated benchmark suites with functional tests and per-model repair rates.
 - Markdown reports of measured model and task performance.
 - Failure diagnostics for unsuccessful benchmark attempts.
+- Optional test-guided correction attempts with model-call tracking.
 - CLI, automated tests, and GitHub Actions CI.
 
 **Security note:** These checks run as subprocesses with your user's privileges. The allowlist prevents arbitrary CLI command strings, but running tests from an untrusted repository can execute untrusted code. Only evaluate repositories you trust. This is **not a sandbox**.
@@ -82,7 +83,22 @@ agentforge benchmark report runs/extended_benchmarks.jsonl \
 
 agentforge benchmark diagnose runs/extended_benchmarks.jsonl \
   --output runs/extended_failures.md
+
+agentforge benchmark run benchmarks/suites/python_repairs_extended.json \
+  --model qwen2.5-coder:3b --repeats 3 \
+  --strategy feedback --max-attempts 2 \
+  --output runs/feedback_benchmarks.jsonl
+
+agentforge benchmark report runs/feedback_benchmarks.jsonl \
+  --output runs/feedback_benchmarks.md
+
 ```
+
+## Test-guided correction
+
+With `--strategy feedback`, a failed model proposal can be revised using the previous error or test output. Each trial starts from the same original task repository. The result records individual attempts, model-call counts and whether the first proposal passed. The default `single` strategy makes one proposal per trial.
+
+Use separate JSONL files when comparing the strategies. Checks run locally against trusted code.
 
 ## Candidate evaluation
 
