@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from agentforge.attempt_tracking import checked_attempt, rejected_attempt
 from agentforge.comparison import apply_edits, copy_workspace
 from agentforge.model_agent import ModelCodingAgent, TextGenerator
 from agentforge.runner import run_check
@@ -58,6 +59,7 @@ def evaluate_with_feedback(
     task = load_task(task_file)
     initial_agent = ModelCodingAgent(generator, files, context=context)
     rounds = []
+    attempt_details = []
     changed_files = []
     diffs = []
     candidate = None
@@ -75,6 +77,7 @@ def evaluate_with_feedback(
         if verification is not None:
             verify_baseline = run_verification(workspace, verification, task.timeout)
 
+        previous_public_check_passed = baseline["passed"]
         for number in range(1, max_attempts + 1):
             current_generator = FeedbackGenerator(generator, feedback) if feedback else generator
             agent = ModelCodingAgent(current_generator, files, context=context)
@@ -85,6 +88,11 @@ def evaluate_with_feedback(
                 changed_files.extend(edit.path for edit in edits)
                 candidate = run_check(workspace, task.check, timeout=task.timeout)
                 repaired = not baseline["passed"] and candidate["passed"]
+                attempt = checked_attempt(
+                    number, difference, [edit.path for edit in edits],
+                    candidate, previous_public_check_passed,
+                )
+                attempt_details.append(attempt)
                 rounds.append({
                     "attempt": number,
                     "action": "candidate_check",
@@ -92,7 +100,10 @@ def evaluate_with_feedback(
                     "repaired": repaired,
                     "changed_files": [edit.path for edit in edits],
                     "result": candidate,
+                    "patch_sha256": attempt["patch_sha256"],
+                    "public_failure_kind": attempt["public_failure_kind"],
                 })
+                previous_public_check_passed = candidate["passed"]
                 if number == 1:
                     first_attempt_improved = repaired
                 final_error = None
@@ -101,6 +112,9 @@ def evaluate_with_feedback(
                 feedback = _check_feedback(candidate)
             except (OSError, TypeError, ValueError) as exc:
                 final_error = f"{type(exc).__name__}: {exc}"
+                attempt_details.append(rejected_attempt(
+                    number, final_error, previous_public_check_passed,
+                ))
                 rounds.append({
                     "attempt": number,
                     "action": "proposal_rejected",
@@ -144,6 +158,7 @@ def evaluate_with_feedback(
         "error": final_error,
         "changed_files": list(dict.fromkeys(changed_files)),
         "diff": "".join(diffs),
+        "attempt_details": attempt_details,
         "trajectory": [{"action": "baseline_check", "passed": baseline["passed"]}, *rounds],
         "result": {"passed": verified if verified is not None
                    else bool(candidate and candidate["passed"])},
