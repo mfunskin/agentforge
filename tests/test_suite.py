@@ -70,7 +70,7 @@ def test_functional_repair_over_multiple_runs(tmp_path):
         client_factory=FakeGenerator,
     )
     assert summary["total_attempts"] == 2
-    assert summary["models"]["correct"]["repaired"] == 2
+    assert summary["models"]["correct"]["repaired"] == 2, output.read_text()
     assert summary["models"]["correct"]["repair_rate"] == 1.0
     records = [json.loads(line) for line in output.read_text().splitlines()]
     assert len(records) == 2
