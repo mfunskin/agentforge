@@ -92,6 +92,9 @@ agentforge benchmark run benchmarks/suites/python_repairs_extended.json \
 agentforge benchmark report runs/feedback_benchmarks.jsonl \
   --output runs/feedback_benchmarks.md
 
+agentforge benchmark diagnose runs/feedback_benchmarks.jsonl \
+  --output runs/feedback_failures.md
+
 ```
 
 ## Test-guided correction

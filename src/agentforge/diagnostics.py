@@ -47,6 +47,49 @@ def _details(record: dict) -> str:
     return f"Candidate check exit code: {candidate.get('exit_code')}"
 
 
+def _feedback_events(record: dict) -> list[dict]:
+    """Return saved model attempts without counting the baseline check."""
+    trajectory = record.get("trajectory")
+    if not isinstance(trajectory, list):
+        return []
+    return [
+        event for event in trajectory
+        if isinstance(event, dict)
+        and type(event.get("attempt")) is int
+        and event["attempt"] > 0
+        and event.get("action") in {"proposal_rejected", "candidate_check"}
+    ]
+
+
+def _feedback_counts(records: list[dict]) -> Counter:
+    counts: Counter[str] = Counter()
+    for record in records:
+        events = _feedback_events(record)
+        if events:
+            counts["model_calls"] += len(events)
+            if len(events) > 1:
+                counts["retried_trials"] += 1
+        for event in events:
+            if event["action"] == "proposal_rejected":
+                counts["rejected_proposals"] += 1
+            elif event.get("passed"):
+                counts["passing_checks"] += 1
+            else:
+                counts["failed_checks"] += 1
+    return counts
+
+
+def _feedback_detail(event: dict) -> tuple[str, str]:
+    if event["action"] == "proposal_rejected":
+        error = event.get("error")
+        return "Proposal rejected", error[-1600:] if isinstance(error, str) else "Rejected"
+    result = event.get("result")
+    status = "Check passed" if event.get("passed") else "Check failed"
+    if isinstance(result, dict):
+        return status, _details({"error": None, "candidate": result})
+    return status, "No check output was recorded."
+
+
 def render_diagnostics(records: list[dict], limit: int = 30) -> str:
     """Create a failure report grouped by model, task and outcome."""
     if not 1 <= limit <= 500:
@@ -73,6 +116,23 @@ def render_diagnostics(records: list[dict], limit: int = 30) -> str:
     ]
     for outcome, count in sorted(counts.items()):
         lines.append(f"| {outcome} | {count} |")
+    feedback_counts = _feedback_counts(records)
+    if feedback_counts["model_calls"]:
+        lines.extend([
+            "",
+            "## Feedback attempt outcomes",
+            "",
+            "| Measurement | Count |",
+            "| --- | ---: |",
+        ])
+        for label, key in (
+            ("Model calls", "model_calls"),
+            ("Trials with retries", "retried_trials"),
+            ("Rejected proposals", "rejected_proposals"),
+            ("Failed candidate checks", "failed_checks"),
+            ("Passing candidate checks", "passing_checks"),
+        ):
+            lines.append(f"| {label} | {feedback_counts[key]} |")
     lines.extend([
         "",
         "## Unsuccessful attempts by case",
@@ -98,11 +158,21 @@ def render_diagnostics(records: list[dict], limit: int = 30) -> str:
             "",
             f"Outcome: {classify_result(record)}",
             "",
-            "~~~text",
-            _details(record),
-            "~~~",
-            "",
         ])
+        events = _feedback_events(record)
+        if events:
+            for event in events:
+                status, detail = _feedback_detail(event)
+                lines.extend([
+                    f"#### Attempt {event['attempt']}: {status}",
+                    "",
+                    "~~~text",
+                    detail,
+                    "~~~",
+                    "",
+                ])
+        else:
+            lines.extend(["~~~text", _details(record), "~~~", ""])
     if len(failures) > limit:
         lines.append(f"{len(failures) - limit} additional failures omitted.")
     return "\n".join(lines).rstrip() + "\n"
@@ -123,5 +193,6 @@ def generate_diagnostics(results_file: Path, output: Path, limit: int = 30) -> d
         "repaired": len(records) - len(failures),
         "unsuccessful": len(failures),
         "outcomes": dict(sorted(Counter(classify_result(r) for r in records).items())),
+        "feedback_attempts": dict(sorted(_feedback_counts(records).items())),
         "output": str(destination),
     }
