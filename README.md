@@ -121,7 +121,7 @@ agentforge benchmark compare \
 cat runs/experiment_comparison.md
 ```
 
-The comparison uses the first file as the reference. It requires matching task IDs and trial numbers, and reports repair rates, percentage-point differences, model calls, errors and median trial duration. Legacy single-attempt runs count as one model call per trial.
+The comparison uses the first file as the reference. It requires matching task IDs and trial numbers, and reports repair rates, percentage-point differences, model calls, errors and median trial duration. For v2 runs, it reports public-test repairs and independently verified repairs separately, including changes by task. V2 comparisons also require matching suite, task, repository and verification fingerprints. Legacy single-attempt runs count as one model call per trial.
 
 ## Audit repeated benchmark patches
 
