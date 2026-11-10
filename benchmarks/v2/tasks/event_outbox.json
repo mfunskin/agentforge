@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "event-outbox-002",
+  "title": "Repair enqueue_events so duplicate event IDs are skipped within and across batches, order is stable, invalid IDs are rejected, and caller-owned event dictionaries and lists are not mutated.",
+  "repository": "../repos/event_outbox",
+  "check": "pytest",
+  "timeout": 30
+}
