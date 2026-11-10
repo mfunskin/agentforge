@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -168,7 +167,7 @@ def render_audit(audits: list[dict]) -> str:
                 lines.append(f"- {_cell(task['task_id'])}: no recorded diff")
                 continue
             values = ", ".join(
-                f"\`{entry['sha256'][:12]}\` ({entry['trials']} trials)"
+                f"`{entry['sha256'][:12]}` ({entry['trials']} trials)"
                 for entry in task["patches"]
             )
             lines.append(f"- {_cell(task['task_id'])}: {values}")
