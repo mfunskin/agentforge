@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "name": "python-repairs-extended",
+  "cases": [
+    {
+      "task": "../sample_cases/syntax_fix.json",
+      "files": [
+        "src/example.py"
+      ]
+    },
+    {
+      "task": "../sample_cases/clamp_fix.json",
+      "files": [
+        "src/calculator.py"
+      ]
+    },
+    {
+      "task": "../sample_cases/csv_parser.json",
+      "files": [
+        "src/parser.py"
+      ]
+    },
+    {
+      "task": "../sample_cases/pagination.json",
+      "files": [
+        "src/pager.py"
+      ]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Candidate patch comparisons against baseline checks, including diffs and action records.
 - Local Ollama model integration for generating and testing code changes.
 - Repeated benchmark suites with functional tests and per-model repair rates.
+- Markdown reports of measured model and task performance.
 - CLI, automated tests, and GitHub Actions CI.
 
 **Security note:** These checks run as subprocesses with your user's privileges. The allowlist prevents arbitrary CLI command strings, but running tests from an untrusted repository can execute untrusted code. Only evaluate repositories you trust. This is **not a sandbox**.
@@ -67,6 +68,17 @@ agentforge benchmark run benchmarks/suites/python_repairs.json \
 ```
 
 To compare installed models, supply `--model` again with another model name. The summary reports attempts, repaired tasks and repair rates. Each trial is also written to JSONL.
+
+For the extended suite and Markdown report:
+
+```bash
+agentforge benchmark run benchmarks/suites/python_repairs_extended.json \
+  --model qwen2.5-coder:3b --repeats 3 \
+  --output runs/extended_benchmarks.jsonl
+
+agentforge benchmark report runs/extended_benchmarks.jsonl \
+  --output runs/extended_benchmarks.md
+```
 
 ## Candidate evaluation
 

@@ -11,6 +11,7 @@ from agentforge.comparison import compare_proposal, evaluate_agent
 from agentforge.evaluation import evaluate
 from agentforge.inspector import inspect_repo
 from agentforge.model_agent import ModelCodingAgent, OllamaClient
+from agentforge.reports import generate_report
 from agentforge.runner import ALLOWED_CHECKS, run_check
 from agentforge.suite import load_suite, run_suite
 from agentforge.tasks import load_task
@@ -59,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
     suite_run.add_argument("--repeats", type=int, default=3)
     suite_run.add_argument("--model-timeout", type=int, default=120)
     suite_run.add_argument("--output", type=Path, default=Path("runs/benchmarks.jsonl"))
+    report = benchmark_sub.add_parser("report", help="Summarize saved benchmark results")
+    report.add_argument("file", type=Path)
+    report.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "inspect":
@@ -69,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
             result = evaluate(args.repo, args.name, args.output, args.timeout)
         elif args.command == "benchmark" and args.benchmark_command == "validate":
             result = load_suite(args.file).as_dict()
+        elif args.command == "benchmark" and args.benchmark_command == "report":
+            result = generate_report(args.file, args.output)
         elif args.command == "benchmark":
             result = run_suite(
                 args.file, args.models, repeats=args.repeats, output=args.output,

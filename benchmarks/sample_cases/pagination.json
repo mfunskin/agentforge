@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "pagination-001",
+  "title": "Fix collect_pages to include items from the final page, continue across empty intermediate pages when another cursor exists, and reject repeated next cursors to prevent loops.",
+  "repository": "pagination_repo",
+  "check": "pytest",
+  "timeout": 30
+}
