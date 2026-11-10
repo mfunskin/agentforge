@@ -22,7 +22,7 @@ def run_check(repo: Path, check: str, timeout: int = 30) -> dict:
         raise ValueError("Repository path must be a directory")
     start = time.monotonic()
     try:
-        process = subprocess.run(ALLOWED_CHECKS[check], cwd=repo, shell=False,
+        process = subprocess.run(ALLOWED_CHECKS[check], check=False, cwd=repo, shell=False,
                                  capture_output=True, text=True, timeout=timeout,
                                  encoding="utf-8", errors="replace")
         return {"check": check, "exit_code": process.returncode, "passed": process.returncode == 0,

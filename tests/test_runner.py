@@ -1,7 +1,9 @@
 from pathlib import Path
+
 import pytest
-from agentforge.runner import run_check
+
 from agentforge.evaluation import evaluate
+from agentforge.runner import run_check
 
 
 def test_compile_success(tmp_path: Path):
