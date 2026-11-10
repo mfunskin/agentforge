@@ -12,7 +12,8 @@ ALLOWED_CHECKS = {
 }
 
 
-def run_check(repo: Path, check: str, timeout: int = 30) -> dict:
+def run_check(repo: Path, check: str, timeout: int = 30,
+              verification: bool = False) -> dict:
     if check not in ALLOWED_CHECKS:
         raise ValueError(f"Unsupported check: {check}. Choose from: {', '.join(ALLOWED_CHECKS)}")
     if not 1 <= timeout <= 300:
@@ -20,9 +21,14 @@ def run_check(repo: Path, check: str, timeout: int = 30) -> dict:
     repo = repo.expanduser().resolve(strict=True)
     if not repo.is_dir():
         raise ValueError("Repository path must be a directory")
+    if verification and check != "pytest":
+        raise ValueError("Independent verification requires pytest")
+    command = ALLOWED_CHECKS[check]
+    if verification:
+        command = [*command, ".agentforge_verification"]
     start = time.monotonic()
     try:
-        process = subprocess.run(ALLOWED_CHECKS[check], check=False, cwd=repo, shell=False,
+        process = subprocess.run(command, check=False, cwd=repo, shell=False,
                                  capture_output=True, text=True, timeout=timeout,
                                  encoding="utf-8", errors="replace")
         return {"check": check, "exit_code": process.returncode, "passed": process.returncode == 0,
