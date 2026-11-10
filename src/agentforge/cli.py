@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
             result = run_task(args.file, args.output)
         print(json.dumps(result, indent=2))
         return 0 if result.get("result", result).get("passed", True) else 1
-    except (OSError, ValueError) as error:
+    except (OSError, TypeError, ValueError) as error:
         print(f"agentforge: {error}", file=sys.stderr)
         return 2
 
