@@ -14,6 +14,7 @@ from uuid import uuid4
 from agentforge.proposals import CodingAgent, FileEdit, ManifestAgent, validate_edit_path
 from agentforge.runner import run_check
 from agentforge.tasks import load_task
+from agentforge.verification import run_verification
 
 EXCLUDED = {
     ".git", ".venv", "venv", "__pycache__", ".pytest_cache", ".ruff_cache",
@@ -65,7 +66,8 @@ def apply_edits(workspace: Path, edits: tuple[FileEdit, ...]) -> str:
     return "".join(diffs)
 
 
-def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = None) -> dict:
+def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = None,
+                   verification: Path | None = None) -> dict:
     """Check the task before and after an agent's candidate file replacements."""
     task = load_task(task_file)
     edits = agent.propose(task)
@@ -75,6 +77,10 @@ def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = No
         copy_workspace(task.repository, workspace)
 
         baseline = run_check(workspace, task.check, timeout=task.timeout)
+        verify_baseline = (
+            run_verification(workspace, verification, task.timeout)
+            if verification is not None else None
+        )
         events.append({"action": "baseline_check", "passed": baseline["passed"]})
 
         started = time.monotonic()
@@ -86,7 +92,16 @@ def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = No
 
         candidate = run_check(workspace, task.check, timeout=task.timeout)
         events.append({"action": "candidate_check", "passed": candidate["passed"]})
+        verify_candidate = (
+            run_verification(workspace, verification, task.timeout)
+            if verification is not None else None
+        )
 
+    visible_improved = not baseline["passed"] and candidate["passed"]
+    verified = (
+        visible_improved and not verify_baseline["passed"] and verify_candidate["passed"]
+        if verification is not None else None
+    )
     record = {
         "run_id": str(uuid4()),
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -95,11 +110,14 @@ def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = No
         "agent_details": agent.metadata() if callable(getattr(agent, "metadata", None)) else {},
         "baseline": baseline,
         "candidate": candidate,
-        "improved": not baseline["passed"] and candidate["passed"],
+        "improved": verified if verified is not None else visible_improved,
+        "visible_improved": visible_improved if verification is not None else None,
+        "verification_baseline": verify_baseline,
+        "verification": verify_candidate,
         "changed_files": [edit.path for edit in edits],
         "diff": difference,
         "trajectory": events,
-        "result": {"passed": candidate["passed"]},
+        "result": {"passed": verified if verified is not None else candidate["passed"]},
     }
     if output is not None:
         destination = output.expanduser().resolve()

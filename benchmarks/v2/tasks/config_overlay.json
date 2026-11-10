@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "config-overlay-002",
+  "title": "Repair merge_config so nested dictionaries merge recursively, explicit None values override defaults, lists are replaced, and inputs are never mutated or aliased in the returned configuration.",
+  "repository": "../repos/config_overlay",
+  "check": "pytest",
+  "timeout": 30
+}

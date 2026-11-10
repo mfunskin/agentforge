@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "header-redaction-002",
+  "title": "Repair redact_headers to mask sensitive HTTP headers without case sensitivity, including authorization, proxy authorization, API keys, and cookies, while leaving other values and the input dictionary unchanged.",
+  "repository": "../repos/header_redaction",
+  "check": "pytest",
+  "timeout": 30
+}

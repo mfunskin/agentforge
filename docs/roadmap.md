@@ -1,10 +1,11 @@
 # Engineering roadmap
 
-- [x] Modular CLI, inventory, checks, structured result logging.
-- [x] Unit tests and CI workflow (requires verification after publishing).
-- [ ] Formal task schema and fixture-based patch benchmark.
-- [ ] Explicit isolated execution boundary for untrusted repositories.
-- [ ] Model backend adapter and coding agent.
-- [ ] Track action-by-action trajectories and costs.
-- [ ] Kaggle competition adapter, only after review of competition rules.
-- [ ] Baseline comparison results and reproducibility report.
+- [x] Modular CLI, inventory, allowlisted checks and structured JSONL results.
+- [x] Versioned coding tasks, proposal evaluation and repair benchmarks.
+- [x] Ollama model integration, test-guided retries and per-task diagnostics.
+- [x] Side-by-side benchmark comparison and reproducibility reporting.
+- [x] Benchmark v2 with separate prompt-held-out verification, source fingerprints and six new fixtures.
+- [ ] Restricted execution environment for code and tests from untrusted repositories.
+- [ ] Larger independent repository repair corpus with genuinely private verification.
+- [ ] Competition adapter for Kaggle datasets where competition rules explicitly permit use.
+- [ ] Multi-model evaluation report with confidence intervals and resource usage.

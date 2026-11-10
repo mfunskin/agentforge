@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "checkpoint-resume-002",
+  "title": "Repair process_events so previously committed offsets and duplicates are skipped, handlers run before checkpoint persistence, and failures never commit an unprocessed offset.",
+  "repository": "../repos/checkpoint",
+  "check": "pytest",
+  "timeout": 30
+}

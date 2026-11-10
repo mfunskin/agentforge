@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "retry-policy-002",
+  "title": "Repair fetch_with_retry so retryable responses (429 and 5xx) are retried up to attempts, Retry-After delays are honored, non-retryable responses return immediately, and invalid attempt budgets are rejected.",
+  "repository": "../repos/retry_policy",
+  "check": "pytest",
+  "timeout": 30
+}

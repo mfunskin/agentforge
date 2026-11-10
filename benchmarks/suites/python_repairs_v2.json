@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "name": "python-repairs-v2",
+  "cases": [
+    {
+      "task": "../v2/tasks/retry_policy.json",
+      "files": [
+        "src/retry_policy.py"
+      ],
+      "verification": "../v2/verification/retry_policy"
+    },
+    {
+      "task": "../v2/tasks/config_overlay.json",
+      "files": [
+        "src/config_overlay.py"
+      ],
+      "verification": "../v2/verification/config_overlay"
+    },
+    {
+      "task": "../v2/tasks/event_outbox.json",
+      "files": [
+        "src/event_outbox.py"
+      ],
+      "verification": "../v2/verification/event_outbox"
+    },
+    {
+      "task": "../v2/tasks/rate_limiter.json",
+      "files": [
+        "src/rate_limiter.py"
+      ],
+      "verification": "../v2/verification/rate_limiter"
+    },
+    {
+      "task": "../v2/tasks/header_redaction.json",
+      "files": [
+        "src/header_redaction.py"
+      ],
+      "verification": "../v2/verification/header_redaction"
+    },
+    {
+      "task": "../v2/tasks/checkpoint.json",
+      "files": [
+        "src/checkpoint.py"
+      ],
+      "verification": "../v2/verification/checkpoint"
+    }
+  ]
+}

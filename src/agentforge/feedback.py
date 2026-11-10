@@ -12,6 +12,7 @@ from agentforge.comparison import apply_edits, copy_workspace
 from agentforge.model_agent import ModelCodingAgent, TextGenerator
 from agentforge.runner import run_check
 from agentforge.tasks import load_task
+from agentforge.verification import run_verification
 
 
 class FeedbackGenerator:
@@ -49,6 +50,7 @@ def evaluate_with_feedback(
     max_attempts: int = 2,
     output: Path | None = None,
     context: str = "source",
+    verification: Path | None = None,
 ) -> dict:
     """Try a model proposal again after a rejected edit or failed check."""
     if type(max_attempts) is not int or not 1 <= max_attempts <= 5:
@@ -62,12 +64,16 @@ def evaluate_with_feedback(
     final_error = None
     feedback = ""
     first_attempt_improved = False
+    verify_baseline = None
+    verify_candidate = None
 
     with tempfile.TemporaryDirectory(prefix="agentforge-feedback-") as temporary:
         workspace = Path(temporary) / "repo"
         copy_workspace(task.repository, workspace)
         workspace_task = replace(task, repository=workspace)
         baseline = run_check(workspace, task.check, timeout=task.timeout)
+        if verification is not None:
+            verify_baseline = run_verification(workspace, verification, task.timeout)
 
         for number in range(1, max_attempts + 1):
             current_generator = FeedbackGenerator(generator, feedback) if feedback else generator
@@ -106,10 +112,18 @@ def evaluate_with_feedback(
                     f"{baseline.get('stderr', '')[-1000:]}"
                 )
 
+        if verification is not None and candidate is not None:
+            verify_candidate = run_verification(workspace, verification, task.timeout)
+
     repaired = (
         not baseline["passed"]
         and candidate is not None
         and candidate["passed"]
+    )
+    verified = (
+        repaired and not verify_baseline["passed"]
+        and verify_candidate is not None and verify_candidate["passed"]
+        if verification is not None else None
     )
     record = {
         "run_id": str(uuid4()),
@@ -123,12 +137,16 @@ def evaluate_with_feedback(
         "first_attempt_improved": first_attempt_improved,
         "baseline": baseline,
         "candidate": candidate,
-        "improved": repaired,
+        "improved": verified if verified is not None else repaired,
+        "visible_improved": repaired if verification is not None else None,
+        "verification_baseline": verify_baseline,
+        "verification": verify_candidate,
         "error": final_error,
         "changed_files": list(dict.fromkeys(changed_files)),
         "diff": "".join(diffs),
         "trajectory": [{"action": "baseline_check", "passed": baseline["passed"]}, *rounds],
-        "result": {"passed": bool(candidate and candidate["passed"])},
+        "result": {"passed": verified if verified is not None
+                   else bool(candidate and candidate["passed"])},
     }
     if output is not None:
         destination = output.expanduser().resolve()

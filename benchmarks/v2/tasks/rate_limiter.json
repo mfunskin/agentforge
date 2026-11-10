@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "rate-limiter-002",
+  "title": "Repair TokenBucket to allow requests at the exact available-token boundary, refill using elapsed monotonic time without granting tokens for backward time jumps, and reject invalid requests and capacity settings.",
+  "repository": "../repos/rate_limiter",
+  "check": "pytest",
+  "timeout": 30
+}

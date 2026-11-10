@@ -13,6 +13,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Repeated benchmark suites with functional tests and per-model repair rates.
 - Markdown reports of measured model and task performance.
 - Side-by-side comparisons of saved benchmark experiments.
+- Version 2 suites with separate post-edit verification and run provenance.
 - Failure diagnostics for unsuccessful benchmark attempts.
 - Optional test-guided correction attempts with model-call tracking.
 - Read-only repository test context for coding models.
@@ -119,6 +120,10 @@ cat runs/experiment_comparison.md
 ```
 
 The comparison uses the first file as the reference. It requires matching task IDs and trial numbers, and reports repair rates, percentage-point differences, model calls, errors and median trial duration. Legacy single-attempt runs count as one model call per trial.
+
+## Benchmark v2
+
+The six-case [Benchmark v2](docs/benchmark_v2.md) suite uses independent post-edit verification and records model and repository provenance. It is separate from the original four-task benchmark. Run it with `benchmarks/suites/python_repairs_v2.json`.
 
 ## Test-guided correction
 

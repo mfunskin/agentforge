@@ -12,6 +12,7 @@ from agentforge.proposals import FileEdit, parse_proposal, validate_edit_path
 from agentforge.tasks import CodingTask
 
 OLLAMA_GENERATE_URL = "http://127.0.0.1:11434/api/generate"
+OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
 MAX_CONTEXT_BYTES = 96 * 1024
 MAX_TEST_CONTEXT_BYTES = 16 * 1024
 MAX_TEST_CONTEXT_FILES = 8
@@ -20,6 +21,24 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
 class TextGenerator(Protocol):
     def generate(self, prompt: str) -> str: ...
+
+
+def ollama_model_digest(model: str) -> str | None:
+    """Record the installed model digest when the local Ollama service responds."""
+    try:
+        with urlopen(Request(OLLAMA_TAGS_URL), timeout=3) as response:
+            data = json.loads(response.read(256 * 1024))
+    except (OSError, TimeoutError, ValueError, TypeError):
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("models"), list):
+        return None
+    for item in data["models"]:
+        if not isinstance(item, dict):
+            continue
+        if item.get("name") == model or item.get("model") == model:
+            digest = item.get("digest")
+            return digest if isinstance(digest, str) and digest else None
+    return None
 
 
 class OllamaClient:
