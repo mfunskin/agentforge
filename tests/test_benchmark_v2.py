@@ -10,7 +10,10 @@ from agentforge.runner import run_check
 from agentforge.suite import load_suite, run_suite
 from agentforge.tasks import load_task
 from agentforge.verification import (
-    directory_digest, repository_digest, run_verification, verification_files,
+    directory_digest,
+    repository_digest,
+    run_verification,
+    verification_files,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
