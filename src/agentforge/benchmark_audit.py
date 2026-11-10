@@ -47,7 +47,7 @@ def _task_summary(records: list[dict], version: int) -> dict:
         if diff is None or diff == "":
             continue
         if not isinstance(diff, str):
-            raise ValueError("Recorded diff must be text")
+            raise TypeError("Recorded diff must be text")
         patches.append(hashlib.sha256(diff.encode("utf-8")).hexdigest())
     counts = Counter(patches)
     return {
