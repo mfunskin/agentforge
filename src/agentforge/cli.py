@@ -13,6 +13,7 @@ from agentforge.evaluation import evaluate
 from agentforge.inspector import inspect_repo
 from agentforge.model_agent import ModelCodingAgent, OllamaClient
 from agentforge.reports import generate_report
+from agentforge.run_comparison import compare_results
 from agentforge.runner import ALLOWED_CHECKS, run_check
 from agentforge.suite import load_suite, run_suite
 from agentforge.tasks import load_task
@@ -72,6 +73,11 @@ def main(argv: list[str] | None = None) -> int:
     diagnose.add_argument("file", type=Path)
     diagnose.add_argument("--output", type=Path, required=True)
     diagnose.add_argument("--limit", type=int, default=30)
+    compare_runs = benchmark_sub.add_parser(
+        "compare", help="Compare saved benchmark runs and evaluation conditions"
+    )
+    compare_runs.add_argument("files", type=Path, nargs="+")
+    compare_runs.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "inspect":
@@ -82,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
             result = evaluate(args.repo, args.name, args.output, args.timeout)
         elif args.command == "benchmark" and args.benchmark_command == "validate":
             result = load_suite(args.file).as_dict()
+        elif args.command == "benchmark" and args.benchmark_command == "compare":
+            result = compare_results(args.files, args.output)
         elif args.command == "benchmark" and args.benchmark_command == "diagnose":
             result = generate_diagnostics(args.file, args.output, limit=args.limit)
         elif args.command == "benchmark" and args.benchmark_command == "report":
