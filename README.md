@@ -144,6 +144,13 @@ For new runs, audit output also includes separate per-attempt patch statistics. 
 
 The six-case [Benchmark v2](docs/benchmark_v2.md) suite uses independent post-edit verification and records model and repository provenance. It is separate from the original four-task benchmark. Run it with `benchmarks/suites/python_repairs_v2.json`.
 
+## Expanded twelve-task benchmark
+
+The [twelve-task Benchmark v2 suite](docs/benchmark_v2_twelve.md) retains the
+original six cases and adds six new repair problems, including two multi-file
+tasks. It uses a separate suite manifest and preserves the historical scores.
+Run it with `benchmarks/suites/python_repairs_v2_twelve.json`.
+
 ## Test-guided correction
 
 With `--strategy feedback`, a failed model proposal can be revised using the previous error or test output. Each trial starts from the same original task repository. The result records individual attempts, model-call counts and whether the first proposal passed. The default `single` strategy makes one proposal per trial.

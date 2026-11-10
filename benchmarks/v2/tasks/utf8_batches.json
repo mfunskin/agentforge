@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "utf8-batches-003",
+  "title": "Repair batch_records(records, max_bytes) so records are grouped into nonempty ordered batches without exceeding the UTF-8 encoded byte budget. A record larger than the budget must raise ValueError; reject invalid budgets and handle an empty or single-pass iterable without consuming it twice.",
+  "repository": "../repos/utf8_batches",
+  "check": "pytest",
+  "timeout": 30
+}

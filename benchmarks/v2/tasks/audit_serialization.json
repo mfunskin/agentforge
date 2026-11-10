@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "audit-serialization-003",
+  "title": "Repair redact_record and format_audit_event. Recursively mask sensitive keys (authorization, token, password, secret, api_key) without mutating input data; output compact, deterministic JSON with sorted keys. Lists and nested dictionaries must be handled.",
+  "repository": "../repos/audit_serialization",
+  "check": "pytest",
+  "timeout": 30
+}

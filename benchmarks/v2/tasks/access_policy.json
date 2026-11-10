@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "access-policy-003",
+  "title": "Repair can_access and require_permission to enforce least-privilege roles. Admin permits read/write/delete, writer read/write, reader read only; unknown roles and actions deny. The guard raises PermissionError on denial and returns True on success.",
+  "repository": "../repos/access_policy",
+  "check": "pytest",
+  "timeout": 30
+}

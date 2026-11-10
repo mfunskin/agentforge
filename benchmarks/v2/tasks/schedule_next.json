@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "schedule-next-003",
+  "title": "Repair next_run(anchor, interval, now) so it returns the earliest scheduled occurrence strictly after now, using the original anchor and a positive timedelta to prevent drift when several runs are missed. Reject nonpositive intervals and times earlier than the anchor.",
+  "repository": "../repos/schedule_next",
+  "check": "pytest",
+  "timeout": 30
+}
