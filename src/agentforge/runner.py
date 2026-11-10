@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 
 ALLOWED_CHECKS = {
-    "pytest": [sys.executable, "-m", "pytest", "-q"],
-    "compile": [sys.executable, "-m", "compileall", "-q", "src"],
+    "pytest": [sys.executable, "-B", "-m", "pytest", "-q"],
+    "compile": [sys.executable, "-m", "compileall", "-q", "-f", "src"],
 }
 
 
