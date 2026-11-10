@@ -94,7 +94,7 @@ def test_rejects_duplicate_target_files():
 
 
 def test_context_size_limit(tmp_path, monkeypatch):
-    task, repo = make_task(tmp_path)
+    task, _ = make_task(tmp_path)
     monkeypatch.setattr("agentforge.model_agent.MAX_CONTEXT_BYTES", 1)
     agent = ModelCodingAgent(FakeModel(reply()), ["src/app.py"])
     with pytest.raises(ValueError, match="context limit"):
