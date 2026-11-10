@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -56,8 +55,12 @@ class OllamaClient:
             result = json.loads(raw)
         except (ValueError, UnicodeDecodeError) as exc:
             raise ValueError("Ollama returned invalid JSON") from exc
-        if not isinstance(result, dict) or not isinstance(result.get("response"), str):
+        if not isinstance(result, dict):
+            raise TypeError("Ollama response must be a JSON object")
+        if "response" not in result:
             raise ValueError("Ollama response is missing generated text")
+        if not isinstance(result["response"], str):
+            raise TypeError("Ollama generated text must be a string")
         return result["response"]
 
 
