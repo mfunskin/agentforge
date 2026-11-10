@@ -70,6 +70,8 @@ def render_report(records: list[dict]) -> str:
         "",
         "Repair rate is the share of attempts where the baseline failed and the candidate passed.",
         "Failed model calls count as unsuccessful attempts.",
+        "For v2, repair means both public checks and independent verification passed.",
+        "The verification tests are not provided to the agent during generation.",
         "",
     ]
     for suite in sorted(grouped):

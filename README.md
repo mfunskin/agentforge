@@ -13,6 +13,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Repeated benchmark suites with functional tests and per-model repair rates.
 - Markdown reports of measured model and task performance.
 - Side-by-side comparisons of saved benchmark experiments.
+- Version 2 suites with separate post-edit verification and run provenance.
 - Failure diagnostics for unsuccessful benchmark attempts.
 - Optional test-guided correction attempts with model-call tracking.
 - Read-only repository test context for coding models.

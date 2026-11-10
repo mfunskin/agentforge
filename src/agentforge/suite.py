@@ -10,9 +10,12 @@ from pathlib import Path
 
 from agentforge.comparison import evaluate_agent
 from agentforge.feedback import evaluate_with_feedback
-from agentforge.model_agent import ModelCodingAgent, OllamaClient, TextGenerator
+from agentforge.model_agent import ModelCodingAgent, OllamaClient, TextGenerator, ollama_model_digest
 from agentforge.proposals import validate_edit_path
 from agentforge.tasks import load_task
+from agentforge.verification import (
+    directory_digest, file_digest, git_commit, repository_digest, verification_files,
+)
 
 
 @dataclass(frozen=True)
@@ -20,20 +23,26 @@ class SuiteCase:
     task_file: Path
     task_id: str
     files: tuple[str, ...]
+    verification: Path | None = None
 
 
 @dataclass(frozen=True)
 class BenchmarkSuite:
     name: str
     cases: tuple[SuiteCase, ...]
+    schema_version: int = 1
 
     def as_dict(self) -> dict:
         return {
-            "schema_version": 1,
+            "schema_version": self.schema_version,
             "name": self.name,
             "cases": [
-                {"task_id": case.task_id, "task": str(case.task_file),
-                 "files": list(case.files)}
+                {
+                    "task_id": case.task_id, "task": str(case.task_file),
+                    "files": list(case.files),
+                    **({"verification": str(case.verification)}
+                       if case.verification is not None else {}),
+                }
                 for case in self.cases
             ],
         }
@@ -52,8 +61,9 @@ def load_suite(path: Path) -> BenchmarkSuite:
         raise TypeError("Suite must be a JSON object")
     if set(data) != {"schema_version", "name", "cases"} or type(data["schema_version"]) is not int:
         raise ValueError("Suite requires schema_version, name and cases")
-    if data["schema_version"] != 1:
+    if data["schema_version"] not in {1, 2}:
         raise ValueError("Unsupported suite schema_version")
+    version = data["schema_version"]
     if not isinstance(data["name"], str) or not data["name"].strip():
         raise ValueError("Suite name must be a non-empty string")
     if not isinstance(data["cases"], list):
@@ -65,8 +75,11 @@ def load_suite(path: Path) -> BenchmarkSuite:
     for entry in data["cases"]:
         if not isinstance(entry, dict):
             raise TypeError("Each suite case must be an object")
-        if set(entry) != {"task", "files"}:
-            raise ValueError("Each suite case requires task and files")
+        required_fields = {"task", "files"} if version == 1 else {
+            "task", "files", "verification",
+        }
+        if set(entry) != required_fields:
+            raise ValueError("Suite cases require task and files, plus verification in v2")
         if not isinstance(entry["task"], str) or not entry["task"].strip():
             raise ValueError("Case task must be a relative JSON path")
         if Path(entry["task"]).is_absolute():
@@ -91,8 +104,21 @@ def load_suite(path: Path) -> BenchmarkSuite:
                 raise ValueError(f"Source path escapes the repository: {filename}")
             if source.is_symlink() or not source.is_file():
                 raise ValueError(f"Source file does not exist: {filename}")
-        cases.append(SuiteCase(task_file, task.task_id, tuple(files)))
-    return BenchmarkSuite(data["name"], tuple(cases))
+        verification = None
+        if version == 2:
+            value = entry["verification"]
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("Verification must be a relative directory")
+            if Path(value).is_absolute():
+                raise ValueError("Verification must be a relative directory")
+            verification = (path.parent / value).resolve(strict=True)
+            if not verification.is_relative_to(path.parent.parent):
+                raise ValueError("Verification must remain inside the benchmark tree")
+            if verification.is_relative_to(task.repository):
+                raise ValueError("Verification must be outside the task repository")
+            verification_files(verification)
+        cases.append(SuiteCase(task_file, task.task_id, tuple(files), verification))
+    return BenchmarkSuite(data["name"], tuple(cases), version)
 
 
 def run_suite(
@@ -132,6 +158,24 @@ def run_suite(
         for model in models
     }
     case_metrics = []
+    version = suite.schema_version
+    provenance = {}
+    if version == 2:
+        provenance = {
+            case.task_id: {
+                "task_sha256": file_digest(case.task_file),
+                "repository_sha256": repository_digest(load_task(case.task_file).repository),
+                "verification_sha256": directory_digest(case.verification),
+            }
+            for case in suite.cases
+        }
+    suite_sha = file_digest(suite_path.expanduser().resolve()) if version == 2 else None
+    commit = git_commit(suite_path.expanduser().resolve().parent) if version == 2 else None
+    model_digests = {
+        model: (ollama_model_digest(model) if version == 2 and client_factory is None
+                else None)
+        for model in models
+    }
     for model in models:
         for case in suite.cases:
             repairs = 0
@@ -145,9 +189,12 @@ def run_suite(
                         record = evaluate_with_feedback(
                             case.task_file, generator, list(case.files),
                             max_attempts=max_attempts, context=context,
+                            verification=case.verification,
                         )
                     else:
-                        record = evaluate_agent(case.task_file, agent)
+                        record = evaluate_agent(
+                            case.task_file, agent, verification=case.verification,
+                        )
                         record["error"] = None
                     if record["error"] is not None:
                         metrics[model]["errors"] += 1
@@ -166,7 +213,29 @@ def run_suite(
                     "task_id": case.task_id, "iteration": iteration,
                     "duration_seconds": round(time.monotonic() - start, 3),
                     "created_at": datetime.now(timezone.utc).isoformat(),
+                    **({
+                        "suite_version": version,
+                        "suite_sha256": suite_sha,
+                        "git_commit": commit,
+                        "model_digest": model_digests[model],
+                        "model_timeout_seconds": model_timeout,
+                        **provenance[case.task_id],
+                    } if version == 2 else {}),
                 }
+                if version == 2:
+                    difference = record.get("diff", "")
+                    lines = difference.splitlines()
+                    record["patch_metrics"] = {
+                        "added_lines": sum(
+                            line.startswith("+") and not line.startswith("+++")
+                            for line in lines
+                        ),
+                        "removed_lines": sum(
+                            line.startswith("-") and not line.startswith("---")
+                            for line in lines
+                        ),
+                        "changed_files": len(record.get("changed_files", [])),
+                    }
                 metrics[model]["attempts"] += 1
                 metrics[model]["model_calls"] += record.get("attempts_used", 1)
                 if record.get("first_attempt_improved", record["improved"]):
@@ -190,6 +259,7 @@ def run_suite(
         stats["repair_rate"] = round(stats["repaired"] / stats["attempts"], 4)
     return {
         "suite": suite.name,
+        "schema_version": version,
         "repeats": repeats,
         "strategy": strategy,
         "context": context,
