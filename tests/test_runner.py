@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,5 @@ def test_python_check_uses_latest_source_without_stale_bytecode(tmp_path: Path):
     assert not run_check(tmp_path, "pytest")["passed"]
     original = code.stat()
     code.write_text("def clamp(x):\n    return x\n")
-    import os
     os.utime(code, ns=(original.st_atime_ns, original.st_mtime_ns))
     assert run_check(tmp_path, "pytest")["passed"]
