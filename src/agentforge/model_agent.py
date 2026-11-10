@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -12,6 +13,8 @@ from agentforge.tasks import CodingTask
 
 OLLAMA_GENERATE_URL = "http://127.0.0.1:11434/api/generate"
 MAX_CONTEXT_BYTES = 96 * 1024
+MAX_TEST_CONTEXT_BYTES = 16 * 1024
+MAX_TEST_CONTEXT_FILES = 8
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
 
@@ -67,20 +70,61 @@ class OllamaClient:
 class ModelCodingAgent:
     """Request replacement source files for an explicit list of repository paths."""
 
-    def __init__(self, generator: TextGenerator, files: list[str]):
+    def __init__(self, generator: TextGenerator, files: list[str], context: str = "source"):
         if not 1 <= len(files) <= 5 or len(set(files)) != len(files):
             raise ValueError("Choose between one and five distinct source files")
+        if context not in {"source", "tests"}:
+            raise ValueError("context must be source or tests")
         for filename in files:
             validate_edit_path(filename)
         self.generator = generator
         self.files = tuple(files)
+        self.context = context
 
     def metadata(self) -> dict:
         return {
             "provider": "ollama" if isinstance(self.generator, OllamaClient) else "custom",
             "model": getattr(self.generator, "model", None),
             "input_files": list(self.files),
+            "context": self.context,
         }
+
+    def _read_tests(self, task: CodingTask) -> list[dict]:
+        if self.context != "tests":
+            return []
+        test_root = task.repository / "tests"
+        if test_root.is_symlink() or not test_root.is_dir():
+            return []
+        names = {Path(filename).stem for filename in self.files}
+        candidates = sorted(
+            test_root.rglob("test_*.py"),
+            key=lambda item: (
+                not any(name in item.stem for name in names),
+                item.relative_to(test_root).as_posix(),
+            ),
+        )
+        selected = []
+        total_bytes = 0
+        for path in candidates:
+            if len(selected) >= MAX_TEST_CONTEXT_FILES:
+                break
+            if path.is_symlink() or not path.is_file():
+                continue
+            if not path.resolve().is_relative_to(test_root.resolve()):
+                continue
+            contents = path.read_bytes()
+            total_bytes += len(contents)
+            if total_bytes > MAX_TEST_CONTEXT_BYTES:
+                raise ValueError("Repository tests exceed the test context limit")
+            try:
+                text = contents.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ValueError(f"Test file is not UTF-8 text: {path.name}") from exc
+            selected.append({
+                "path": path.relative_to(task.repository).as_posix(),
+                "content": text,
+            })
+        return selected
 
     def propose(self, task: CodingTask) -> tuple[FileEdit, ...]:
         source_files = []
@@ -102,6 +146,12 @@ class ModelCodingAgent:
                 raise ValueError(f"Source file is not UTF-8 text: {filename}") from exc
             source_files.append({"path": filename, "content": text})
 
+        test_files = self._read_tests(task)
+        test_context = (
+            "Repository tests (read-only; do not modify these files): "
+            f"{json.dumps(test_files, ensure_ascii=False)}\n"
+            if self.context == "tests" else ""
+        )
         prompt = (
             "You are fixing a software issue in a trusted local repository. "
             "Return one JSON object with schema_version 1 and an edits array. "
@@ -109,6 +159,7 @@ class ModelCodingAgent:
             "Only edit listed input files. No Markdown or explanations.\n"
             f"Issue: {task.title}\n"
             f"Input files: {json.dumps(source_files, ensure_ascii=False)}\n"
+            f"{test_context}"
             "Response example: "
             '{"schema_version":1,"edits":[{"path":"src/app.py","content":"..."}]}'
         )

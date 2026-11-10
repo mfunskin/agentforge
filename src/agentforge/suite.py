@@ -104,11 +104,14 @@ def run_suite(
     client_factory: Callable[[str], TextGenerator] | None = None,
     strategy: str = "single",
     max_attempts: int = 2,
+    context: str = "source",
 ) -> dict:
     """Evaluate every model and task for the same number of independent trials."""
     suite = load_suite(suite_path)
     if strategy not in {"single", "feedback"}:
         raise ValueError("strategy must be single or feedback")
+    if context not in {"source", "tests"}:
+        raise ValueError("context must be source or tests")
     if type(max_attempts) is not int or not 1 <= max_attempts <= 5:
         raise ValueError("max_attempts must be an integer between 1 and 5")
     if not 1 <= len(models) <= 5 or len(set(models)) != len(models):
@@ -137,11 +140,11 @@ def run_suite(
                 try:
                     generator = (client_factory(model) if client_factory is not None
                                  else OllamaClient(model, timeout=model_timeout))
-                    agent = ModelCodingAgent(generator, list(case.files))
+                    agent = ModelCodingAgent(generator, list(case.files), context=context)
                     if strategy == "feedback":
                         record = evaluate_with_feedback(
                             case.task_file, generator, list(case.files),
-                            max_attempts=max_attempts,
+                            max_attempts=max_attempts, context=context,
                         )
                     else:
                         record = evaluate_agent(case.task_file, agent)
@@ -159,6 +162,7 @@ def run_suite(
                     metrics[model]["errors"] += 1
                 record["benchmark"] = {
                     "suite": suite.name, "model": model, "strategy": strategy,
+                    "context": context,
                     "task_id": case.task_id, "iteration": iteration,
                     "duration_seconds": round(time.monotonic() - start, 3),
                     "created_at": datetime.now(timezone.utc).isoformat(),
@@ -188,6 +192,7 @@ def run_suite(
         "suite": suite.name,
         "repeats": repeats,
         "strategy": strategy,
+        "context": context,
         "max_attempts": max_attempts if strategy == "feedback" else 1,
         "total_attempts": sum(stats["attempts"] for stats in metrics.values()),
         "models": metrics,

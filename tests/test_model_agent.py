@@ -147,3 +147,59 @@ def test_cli_model_path_with_fake_ollama(tmp_path, capsys, monkeypatch):
     ]) == 0
     assert '"improved": true' in capsys.readouterr().out
     assert (repo / "src" / "app.py").read_text().startswith("def hello(:")
+
+
+def test_tests_context_includes_read_only_assertions(tmp_path):
+    task, repo = make_task(tmp_path)
+    folder = repo / "tests"
+    folder.mkdir()
+    (folder / "test_app.py").write_text(
+        "from src.app import hello\n\n"
+        "def test_hello():\n    assert hello() == 1\n"
+    )
+    generator = FakeModel(reply())
+    agent = ModelCodingAgent(generator, ["src/app.py"], context="tests")
+    agent.propose(load_task(task))
+    prompt = generator.prompts[0]
+    assert "Repository tests (read-only" in prompt
+    assert "tests/test_app.py" in prompt
+    assert "assert hello() == 1" in prompt
+    assert agent.metadata()["context"] == "tests"
+
+
+def test_source_context_does_not_include_tests(tmp_path):
+    task, repo = make_task(tmp_path)
+    folder = repo / "tests"
+    folder.mkdir()
+    (folder / "test_app.py").write_text("SENTINEL_TEST_CONTENT\n")
+    generator = FakeModel(reply())
+    ModelCodingAgent(generator, ["src/app.py"]).propose(load_task(task))
+    assert "SENTINEL_TEST_CONTENT" not in generator.prompts[0]
+
+
+def test_test_context_skips_symlinked_test_files(tmp_path):
+    task, repo = make_task(tmp_path)
+    folder = repo / "tests"
+    folder.mkdir()
+    secret = tmp_path / "private.py"
+    secret.write_text("SENTINEL_PRIVATE\n")
+    (folder / "test_private.py").symlink_to(secret)
+    generator = FakeModel(reply())
+    ModelCodingAgent(generator, ["src/app.py"], context="tests").propose(load_task(task))
+    assert "SENTINEL_PRIVATE" not in generator.prompts[0]
+
+
+def test_test_context_limit(tmp_path, monkeypatch):
+    task, repo = make_task(tmp_path)
+    folder = repo / "tests"
+    folder.mkdir()
+    (folder / "test_app.py").write_text("X" * 40)
+    monkeypatch.setattr("agentforge.model_agent.MAX_TEST_CONTEXT_BYTES", 8)
+    agent = ModelCodingAgent(FakeModel(reply()), ["src/app.py"], context="tests")
+    with pytest.raises(ValueError, match="test context limit"):
+        agent.propose(load_task(task))
+
+
+def test_invalid_context():
+    with pytest.raises(ValueError, match="context"):
+        ModelCodingAgent(FakeModel(reply()), ["src/app.py"], context="everything")

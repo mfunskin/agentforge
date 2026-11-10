@@ -49,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     solve.add_argument("file", type=Path)
     solve.add_argument("--model", required=True)
     solve.add_argument("--file", action="append", required=True, dest="source_files")
+    solve.add_argument("--context", choices=["source", "tests"], default="source")
     solve.add_argument("--model-timeout", type=int, default=120)
     solve.add_argument("--output", type=Path)
     benchmark = sub.add_parser("benchmark", help="Validate and run benchmark suites")
@@ -61,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     suite_run.add_argument("--repeats", type=int, default=3)
     suite_run.add_argument("--model-timeout", type=int, default=120)
     suite_run.add_argument("--strategy", choices=["single", "feedback"], default="single")
+    suite_run.add_argument("--context", choices=["source", "tests"], default="source")
     suite_run.add_argument("--max-attempts", type=int, default=2)
     suite_run.add_argument("--output", type=Path, default=Path("runs/benchmarks.jsonl"))
     report = benchmark_sub.add_parser("report", help="Summarize saved benchmark results")
@@ -89,11 +91,12 @@ def main(argv: list[str] | None = None) -> int:
                 args.file, args.models, repeats=args.repeats, output=args.output,
                 model_timeout=args.model_timeout,
                 strategy=args.strategy, max_attempts=args.max_attempts,
+                context=args.context,
             )
         elif args.command == "task" and args.task_command == "solve":
             agent = ModelCodingAgent(
                 OllamaClient(args.model, timeout=args.model_timeout),
-                args.source_files,
+                args.source_files, context=args.context,
             )
             result = evaluate_agent(args.file, agent, args.output)
         elif args.command == "task" and args.task_command == "compare":
