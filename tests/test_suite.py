@@ -98,7 +98,9 @@ def test_cli_suite_validate(tmp_path, capsys):
 
 def test_cli_suite_run(tmp_path, capsys, monkeypatch):
     suite, _ = create_suite(tmp_path)
-    monkeypatch.setattr("agentforge.suite.OllamaClient", FakeGenerator)
+    monkeypatch.setattr(
+        "agentforge.suite.OllamaClient", lambda model, timeout: FakeGenerator(model)
+    )
     assert main([
         "benchmark", "run", str(suite),
         "--model", "correct", "--repeats", "1",
