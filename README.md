@@ -1,7 +1,5 @@
 # AgentForge
 
-**Status:** v0.1 prototype — repository inspection, allowlisted checks, and JSONL evaluation recording. **Not yet an autonomous coding agent or Kaggle submission.**
-
 AgentForge is a local-first Python toolkit for reproducible software-engineering agent evaluation. The long-term goal is to compare coding-agent strategies on repository tasks, including permitted Kaggle benchmarks, with reliable execution logs and tests.
 
 ## Current features
