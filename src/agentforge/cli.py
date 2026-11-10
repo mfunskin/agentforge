@@ -12,6 +12,7 @@ from agentforge.evaluation import evaluate
 from agentforge.inspector import inspect_repo
 from agentforge.model_agent import ModelCodingAgent, OllamaClient
 from agentforge.runner import ALLOWED_CHECKS, run_check
+from agentforge.suite import load_suite, run_suite
 from agentforge.tasks import load_task
 
 
@@ -48,6 +49,16 @@ def main(argv: list[str] | None = None) -> int:
     solve.add_argument("--file", action="append", required=True, dest="source_files")
     solve.add_argument("--model-timeout", type=int, default=120)
     solve.add_argument("--output", type=Path)
+    benchmark = sub.add_parser("benchmark", help="Validate and run benchmark suites")
+    benchmark_sub = benchmark.add_subparsers(dest="benchmark_command", required=True)
+    suite_validate = benchmark_sub.add_parser("validate", help="Validate a benchmark suite")
+    suite_validate.add_argument("file", type=Path)
+    suite_run = benchmark_sub.add_parser("run", help="Evaluate models on a suite")
+    suite_run.add_argument("file", type=Path)
+    suite_run.add_argument("--model", action="append", required=True, dest="models")
+    suite_run.add_argument("--repeats", type=int, default=3)
+    suite_run.add_argument("--model-timeout", type=int, default=120)
+    suite_run.add_argument("--output", type=Path, default=Path("runs/benchmarks.jsonl"))
     args = parser.parse_args(argv)
     try:
         if args.command == "inspect":
@@ -56,6 +67,13 @@ def main(argv: list[str] | None = None) -> int:
             result = run_check(args.repo, args.name, args.timeout)
         elif args.command == "evaluate":
             result = evaluate(args.repo, args.name, args.output, args.timeout)
+        elif args.command == "benchmark" and args.benchmark_command == "validate":
+            result = load_suite(args.file).as_dict()
+        elif args.command == "benchmark":
+            result = run_suite(
+                args.file, args.models, repeats=args.repeats, output=args.output,
+                model_timeout=args.model_timeout,
+            )
         elif args.command == "task" and args.task_command == "solve":
             agent = ModelCodingAgent(
                 OllamaClient(args.model, timeout=args.model_timeout),

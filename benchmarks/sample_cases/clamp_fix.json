@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "clamp-fix-001",
+  "title": "Fix clamp so values below the lower bound return the lower bound, values above the upper bound return the upper bound, and values in range stay unchanged",
+  "repository": "clamp_repo",
+  "check": "pytest",
+  "timeout": 30
+}

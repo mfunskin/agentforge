@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "name": "python-repairs",
+  "cases": [
+    {
+      "task": "../sample_cases/syntax_fix.json",
+      "files": [
+        "src/example.py"
+      ]
+    },
+    {
+      "task": "../sample_cases/clamp_fix.json",
+      "files": [
+        "src/calculator.py"
+      ]
+    }
+  ]
+}
