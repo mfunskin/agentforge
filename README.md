@@ -13,6 +13,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Repeated benchmark suites with functional tests and per-model repair rates.
 - Markdown reports of measured model and task performance.
 - Side-by-side comparisons of saved benchmark experiments.
+- Duplicate-patch and trial-identity audits from recorded JSONL results.
 - Version 2 suites with separate post-edit verification and run provenance.
 - Failure diagnostics for unsuccessful benchmark attempts.
 - Optional test-guided correction attempts with model-call tracking.
@@ -120,6 +121,20 @@ cat runs/experiment_comparison.md
 ```
 
 The comparison uses the first file as the reference. It requires matching task IDs and trial numbers, and reports repair rates, percentage-point differences, model calls, errors and median trial duration. Legacy single-attempt runs count as one model call per trial.
+
+## Audit repeated benchmark patches
+
+Inspect saved JSONL results without executing the model again:
+
+```bash
+agentforge benchmark audit runs/v2_qwen7b_single.jsonl \
+  --output runs/v2_qwen7b_single_audit.md
+
+agentforge benchmark audit runs/v2_qwen7b_feedback.jsonl \
+  --output runs/v2_qwen7b_feedback_audit.md
+```
+
+The audit reports public versus verified repairs, model-call counts, duplicate task/iteration IDs, and distinct patch diffs within each task. SHA256 fingerprints compare recorded diff text; feedback diffs may combine multiple edits. Identical patches repeated at temperature zero are not independent solutions.
 
 ## Benchmark v2
 

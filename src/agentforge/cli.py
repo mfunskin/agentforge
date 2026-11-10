@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from agentforge.benchmark import run_task
+from agentforge.benchmark_audit import audit_results
 from agentforge.comparison import compare_proposal, evaluate_agent
 from agentforge.diagnostics import generate_diagnostics
 from agentforge.evaluation import evaluate
@@ -66,6 +67,11 @@ def main(argv: list[str] | None = None) -> int:
     suite_run.add_argument("--context", choices=["source", "tests"], default="source")
     suite_run.add_argument("--max-attempts", type=int, default=2)
     suite_run.add_argument("--output", type=Path, default=Path("runs/benchmarks.jsonl"))
+    audit = benchmark_sub.add_parser(
+        "audit", help="Audit duplicate patches and recorded benchmark conditions"
+    )
+    audit.add_argument("file", type=Path)
+    audit.add_argument("--output", type=Path, required=True)
     report = benchmark_sub.add_parser("report", help="Summarize saved benchmark results")
     report.add_argument("file", type=Path)
     report.add_argument("--output", type=Path, required=True)
@@ -90,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
             result = load_suite(args.file).as_dict()
         elif args.command == "benchmark" and args.benchmark_command == "compare":
             result = compare_results(args.files, args.output)
+        elif args.command == "benchmark" and args.benchmark_command == "audit":
+            result = audit_results(args.file, args.output)
         elif args.command == "benchmark" and args.benchmark_command == "diagnose":
             result = generate_diagnostics(args.file, args.output, limit=args.limit)
         elif args.command == "benchmark" and args.benchmark_command == "report":
