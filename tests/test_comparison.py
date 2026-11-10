@@ -34,6 +34,12 @@ def test_proposal_improves_baseline_without_mutating_repo(tmp_path):
     assert record["improved"] is True
     assert "-def greet(:" in record["diff"]
     assert len(record["trajectory"]) == 3
+    assert len(record["attempt_details"]) == 1
+    attempt = record["attempt_details"][0]
+    assert attempt["public_check_improved"] is True
+    assert attempt["status"] == "candidate_checked"
+    assert attempt["patch_sha256"] is not None
+    assert attempt["diff"] == record["diff"]
     assert json.loads(output.read_text())["run_id"] == record["run_id"]
     assert (repo / "src" / "example.py").read_text() == original
 

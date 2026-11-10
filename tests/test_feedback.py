@@ -69,6 +69,16 @@ def test_retry_uses_failing_test_output(tmp_path):
     assert record["candidate"]["passed"] is True
     assert "test_quoted_comma" in model.prompts[1]
     assert source.read_text() == UNCHANGED
+    assert len(record["attempt_details"]) == 2
+    first, second = record["attempt_details"]
+    assert first["status"] == "candidate_checked"
+    assert first["patch_sha256"] is None
+    assert first["public_check_passed"] is False
+    assert second["status"] == "candidate_checked"
+    assert second["patch_sha256"] is not None
+    assert second["public_check_improved"] is True
+    assert second["previous_public_check_passed"] is False
+    assert "import csv" in second["diff"]
 
 
 def test_invalid_empty_edit_gets_retry(tmp_path):
@@ -79,6 +89,11 @@ def test_invalid_empty_edit_gets_retry(tmp_path):
     assert record["attempts_used"] == 2
     assert record["trajectory"][1]["action"] == "proposal_rejected"
     assert "between 1 and 20 edits" in model.prompts[1]
+    first, second = record["attempt_details"]
+    assert first["status"] == "proposal_rejected"
+    assert first["patch_sha256"] is None
+    assert second["status"] == "candidate_checked"
+    assert second["public_check_improved"] is True
 
 
 def test_pass_on_first_attempt_stops(tmp_path):
