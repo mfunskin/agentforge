@@ -6,9 +6,11 @@ import json
 import sys
 from pathlib import Path
 
+from agentforge.benchmark import run_task
 from agentforge.evaluation import evaluate
 from agentforge.inspector import inspect_repo
 from agentforge.runner import ALLOWED_CHECKS, run_check
+from agentforge.tasks import load_task
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -27,14 +29,25 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--name", choices=ALLOWED_CHECKS, default="pytest")
     ev.add_argument("--timeout", type=int, default=30)
     ev.add_argument("--output", type=Path, default=Path("runs/evaluations.jsonl"))
+    task = sub.add_parser("task", help="Validate or run a coding task")
+    task_sub = task.add_subparsers(dest="task_command", required=True)
+    validate = task_sub.add_parser("validate", help="Validate a JSON task")
+    validate.add_argument("file", type=Path)
+    execute = task_sub.add_parser("run", help="Execute an allowlisted task check")
+    execute.add_argument("file", type=Path)
+    execute.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "inspect":
             result = inspect_repo(args.repo)
         elif args.command == "check":
             result = run_check(args.repo, args.name, args.timeout)
-        else:
+        elif args.command == "evaluate":
             result = evaluate(args.repo, args.name, args.output, args.timeout)
+        elif args.task_command == "validate":
+            result = load_task(args.file).as_dict()
+        else:
+            result = run_task(args.file, args.output)
         print(json.dumps(result, indent=2))
         return 0 if result.get("result", result).get("passed", True) else 1
     except (OSError, ValueError) as error:
