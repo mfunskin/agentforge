@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from agentforge.benchmark import run_task
+from agentforge.comparison import compare_proposal
 from agentforge.evaluation import evaluate
 from agentforge.inspector import inspect_repo
 from agentforge.runner import ALLOWED_CHECKS, run_check
@@ -36,6 +37,10 @@ def main(argv: list[str] | None = None) -> int:
     execute = task_sub.add_parser("run", help="Execute an allowlisted task check")
     execute.add_argument("file", type=Path)
     execute.add_argument("--output", type=Path)
+    compare = task_sub.add_parser("compare", help="Compare a code proposal with the baseline")
+    compare.add_argument("file", type=Path)
+    compare.add_argument("--proposal", type=Path, required=True)
+    compare.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "inspect":
@@ -44,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
             result = run_check(args.repo, args.name, args.timeout)
         elif args.command == "evaluate":
             result = evaluate(args.repo, args.name, args.output, args.timeout)
+        elif args.command == "task" and args.task_command == "compare":
+            result = compare_proposal(args.file, args.proposal, args.output)
         elif args.task_command == "validate":
             result = load_task(args.file).as_dict()
         else:

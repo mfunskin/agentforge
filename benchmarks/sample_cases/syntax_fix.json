@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "syntax-fix-001",
+  "title": "Repair a syntax error in a Python function",
+  "repository": "syntax_repo",
+  "check": "compile",
+  "timeout": 30
+}

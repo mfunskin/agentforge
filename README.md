@@ -8,6 +8,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Allowlisted `pytest` and `compile` checks with timeouts and subprocess output.
 - Structured evaluation runs saved to JSONL.
 - Versioned JSON coding tasks with validation and repeatable checks.
+- Candidate patch comparisons against baseline checks, including diffs and action records.
 - CLI, automated tests, and GitHub Actions CI.
 
 **Security note:** These checks run as subprocesses with your user's privileges. The allowlist prevents arbitrary CLI command strings, but running tests from an untrusted repository can execute untrusted code. Only evaluate repositories you trust. This is **not a sandbox**.
@@ -32,6 +33,9 @@ agentforge check . --name compile
 agentforge evaluate . --name pytest --output runs/evaluations.jsonl
 agentforge task validate benchmarks/sample_cases/compile.json
 agentforge task run benchmarks/sample_cases/compile.json --output runs/tasks.jsonl
+agentforge task compare benchmarks/sample_cases/syntax_fix.json \
+  --proposal benchmarks/proposals/syntax_fix.json \
+  --output runs/comparisons.jsonl
 ```
 
 Exit code 0 means inspection/check succeeded; 1 means check failed; 2 means invalid arguments or local file access error.
@@ -44,6 +48,12 @@ Exit code 0 means inspection/check succeeded; 1 means check failed; 2 means inva
 4. Implement a basic coding-agent interface with pluggable model backends.
 5. Integrate Kaggle benchmarks subject to each competition's rules.
 6. Publish reproducible baseline-vs-improvement experiments.
+
+## Candidate evaluation
+
+The `task compare` command copies the task repository into a temporary workspace, runs the baseline check, applies the proposed file replacements, and runs the check again. It records the before and after results, changed files, and a unified diff. Original repository files are unchanged.
+
+Only existing files can be replaced by proposals. The checks execute locally with the same user permissions as the CLI, so evaluate code from trusted repositories.
 
 ## Data and credentials
 
