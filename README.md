@@ -121,6 +121,10 @@ cat runs/experiment_comparison.md
 
 The comparison uses the first file as the reference. It requires matching task IDs and trial numbers, and reports repair rates, percentage-point differences, model calls, errors and median trial duration. Legacy single-attempt runs count as one model call per trial.
 
+## Benchmark v2
+
+The six-case [Benchmark v2](docs/benchmark_v2.md) suite uses independent post-edit verification and records model and repository provenance. It is separate from the original four-task benchmark. Run it with `benchmarks/suites/python_repairs_v2.json`.
+
 ## Test-guided correction
 
 With `--strategy feedback`, a failed model proposal can be revised using the previous error or test output. Each trial starts from the same original task repository. The result records individual attempts, model-call counts and whether the first proposal passed. The default `single` strategy makes one proposal per trial.
