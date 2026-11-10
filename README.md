@@ -7,6 +7,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Repository file inventory and language counts (avoids common generated directories and symlinks).
 - Allowlisted `pytest` and `compile` checks with timeouts and subprocess output.
 - Structured evaluation runs saved to JSONL.
+- Versioned JSON coding tasks with validation and repeatable checks.
 - CLI, automated tests, and GitHub Actions CI.
 
 **Security note:** These checks run as subprocesses with your user's privileges. The allowlist prevents arbitrary CLI command strings, but running tests from an untrusted repository can execute untrusted code. Only evaluate repositories you trust. This is **not a sandbox**.
@@ -29,6 +30,8 @@ agentforge inspect .
 agentforge check . --name pytest
 agentforge check . --name compile
 agentforge evaluate . --name pytest --output runs/evaluations.jsonl
+agentforge task validate benchmarks/sample_cases/compile.json
+agentforge task run benchmarks/sample_cases/compile.json --output runs/tasks.jsonl
 ```
 
 Exit code 0 means inspection/check succeeded; 1 means check failed; 2 means invalid arguments or local file access error.
