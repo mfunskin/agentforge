@@ -76,3 +76,11 @@ def test_invalid_json(tmp_path):
 def test_cli_task_error(tmp_path, capsys):
     assert main(["task", "validate", str(tmp_path / "missing.json")]) == 2
     assert "agentforge:" in capsys.readouterr().err
+
+def test_non_object_json(tmp_path, capsys):
+    path = tmp_path / "not_a_task.json"
+    path.write_text("[]")
+    with pytest.raises(TypeError, match="JSON object"):
+        load_task(path)
+    assert main(["task", "validate", str(path)]) == 2
+    assert "agentforge:" in capsys.readouterr().err
