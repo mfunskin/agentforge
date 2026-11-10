@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "sample-compile-001",
+  "title": "Compile the AgentForge package",
+  "repository": "../..",
+  "check": "compile",
+  "timeout": 30
+}
