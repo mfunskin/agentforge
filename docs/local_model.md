@@ -11,7 +11,10 @@ ollama list
 Then run the sample task from the repository root. Replace `YOUR_MODEL` with a model listed by Ollama.
 
 ```bash
-agentforge task solve benchmarks/sample_cases/syntax_fix.json   --model YOUR_MODEL   --file src/example.py   --output runs/model_evaluations.jsonl
+agentforge task solve benchmarks/sample_cases/syntax_fix.json \
+  --model YOUR_MODEL \
+  --file src/example.py \
+  --output runs/model_evaluations.jsonl
 ```
 
 For each run, AgentForge sends the selected source files and task title to the local Ollama server, validates the returned edits, and evaluates the proposed changes in a temporary repository copy. The original files are preserved.
