@@ -136,7 +136,7 @@ def test_refuses_result_overwrite(tmp_path):
 
 
 def test_rejects_nontext_diff():
-    with pytest.raises(ValueError, match="diff must be text"):
+    with pytest.raises(TypeError, match="diff must be text"):
         summarize_audit([make_record("csv", 1, {"unexpected": "object"})])
 
 
