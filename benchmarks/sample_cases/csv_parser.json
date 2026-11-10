@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "csv-records-001",
+  "title": "Fix parse_record to handle CSV fields with quoted commas, doubled quotes and empty fields while retaining whitespace inside quoted fields.",
+  "repository": "csv_repo",
+  "check": "pytest",
+  "timeout": 30
+}
