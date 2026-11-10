@@ -37,3 +37,22 @@ def test_evaluate_writes_jsonl(tmp_path: Path):
     record = evaluate(tmp_path, "compile", output)
     assert record["result"]["passed"]
     assert output.read_text().count("\n") == 1
+
+def test_python_check_uses_latest_source_without_stale_bytecode(tmp_path: Path):
+    source = tmp_path / "src"
+    source.mkdir()
+    code = source / "calculator.py"
+    code.write_text("def clamp(x):\n    return 0\n")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_calculator.py").write_text(
+        "from src.calculator import clamp\n\n"
+        "def test_clamp():\n"
+        "    assert clamp(5) == 5\n"
+    )
+    assert not run_check(tmp_path, "pytest")["passed"]
+    original = code.stat()
+    code.write_text("def clamp(x):\n    return x\n")
+    import os
+    os.utime(code, ns=(original.st_atime_ns, original.st_mtime_ns))
+    assert run_check(tmp_path, "pytest")["passed"]
