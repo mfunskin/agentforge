@@ -102,3 +102,58 @@ def test_excerpt_is_bounded():
     report = render_diagnostics([record(error="X" * 10000)])
     assert "X" * 1600 in report
     assert "X" * 1601 not in report
+
+
+def test_feedback_diagnostics_show_each_retry(tmp_path):
+    failed = record(
+        task="csv-records-001",
+        candidate={"passed": False, "stdout": "FAILED test_quoted_comma"},
+    )
+    failed["trajectory"] = [
+        {"action": "baseline_check", "passed": False},
+        {
+            "attempt": 1,
+            "action": "proposal_rejected",
+            "error": "ValueError: A proposal must contain between 1 and 20 edits",
+        },
+        {
+            "attempt": 2,
+            "action": "candidate_check",
+            "passed": False,
+            "result": {"passed": False, "stdout": "FAILED test_escaped_quote", "stderr": ""},
+        },
+    ]
+    output = tmp_path / "feedback_details.md"
+    summary = generate_diagnostics(save(tmp_path, [failed]), output)
+    content = output.read_text()
+    assert "## Feedback attempt outcomes" in content
+    assert "| Model calls | 2 |" in content
+    assert "| Trials with retries | 1 |" in content
+    assert "| Rejected proposals | 1 |" in content
+    assert "| Failed candidate checks | 1 |" in content
+    assert "#### Attempt 1: Proposal rejected" in content
+    assert "between 1 and 20 edits" in content
+    assert "#### Attempt 2: Check failed" in content
+    assert "FAILED test_escaped_quote" in content
+    assert summary["feedback_attempts"]["model_calls"] == 2
+    assert "feedback" not in failed.get("benchmark", {})
+
+
+def test_feedback_recovered_rejection_still_counted():
+    repaired = record(improved=True, candidate={"passed": True})
+    repaired["trajectory"] = [
+        {"action": "baseline_check", "passed": False},
+        {"attempt": 1, "action": "proposal_rejected", "error": "Empty edits"},
+        {"attempt": 2, "action": "candidate_check", "passed": True,
+         "result": {"passed": True, "stdout": "all passed"}},
+    ]
+    rendered = render_diagnostics([repaired])
+    assert "| Rejected proposals | 1 |" in rendered
+    assert "| Passing candidate checks | 1 |" in rendered
+    assert "No unsuccessful attempts were recorded." in rendered
+
+
+def test_legacy_diagnostics_do_not_invent_retry_statistics():
+    rendered = render_diagnostics([record(error="bad reply")])
+    assert "## Feedback attempt outcomes" not in rendered
+    assert "bad reply" in rendered
