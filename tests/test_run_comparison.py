@@ -129,3 +129,47 @@ def test_rejects_duplicated_names(tmp_path):
     b = write_run(second, "results")
     with pytest.raises(ValueError, match="distinct stems"):
         compare_results([a, b], tmp_path / "report.md")
+
+
+def test_v2_rejects_changed_verification_fingerprint(tmp_path):
+    first = write_run(tmp_path, "first")
+    second = write_run(tmp_path, "second")
+    for file in (first, second):
+        records = [json.loads(line) for line in file.read_text().splitlines()]
+        for record in records:
+            info = record["benchmark"]
+            info.update({
+                "suite_version": 2,
+                "suite_sha256": "a" * 64,
+                "task_sha256": "b" * 64,
+                "repository_sha256": "c" * 64,
+                "verification_sha256": "d" * 64,
+            })
+        file.write_text("\n".join(json.dumps(item) for item in records) + "\n")
+
+    rows = [json.loads(line) for line in second.read_text().splitlines()]
+    rows[0]["benchmark"]["verification_sha256"] = "e" * 64
+    rows[1]["benchmark"]["verification_sha256"] = "e" * 64
+    second.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+    with pytest.raises(ValueError, match="fingerprints"):
+        compare_results([first, second], tmp_path / "comparison.md")
+
+
+def test_v2_rejects_inconsistent_fingerprints_in_one_run(tmp_path):
+    first = write_run(tmp_path, "first")
+    second = write_run(tmp_path, "second")
+    for file in (first, second):
+        rows = [json.loads(line) for line in file.read_text().splitlines()]
+        for row in rows:
+            row["benchmark"].update({
+                "suite_version": 2,
+                "suite_sha256": "a" * 64,
+                "task_sha256": "b" * 64,
+                "repository_sha256": "c" * 64,
+                "verification_sha256": "d" * 64,
+            })
+        if file == first:
+            rows[1]["benchmark"]["repository_sha256"] = "z" * 64
+        file.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+    with pytest.raises(ValueError, match="Inconsistent"):
+        compare_results([first, second], tmp_path / "comparison.md")

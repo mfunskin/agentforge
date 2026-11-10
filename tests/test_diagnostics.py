@@ -157,3 +157,18 @@ def test_legacy_diagnostics_do_not_invent_retry_statistics():
     rendered = render_diagnostics([record(error="bad reply")])
     assert "## Feedback attempt outcomes" not in rendered
     assert "bad reply" in rendered
+
+
+def test_v2_public_pass_with_verification_failure():
+    failed = record(
+        improved=False,
+        baseline={"passed": False},
+        candidate={"passed": True, "stdout": "3 passed"},
+    )
+    failed["verification"] = {
+        "passed": False, "stdout": "FAILED test_private_edge", "stderr": "",
+    }
+    assert classify_result(failed) == "verification_failed"
+    rendered = render_diagnostics([failed])
+    assert "verification_failed" in rendered
+    assert "FAILED test_private_edge" in rendered

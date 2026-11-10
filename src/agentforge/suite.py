@@ -170,6 +170,8 @@ def run_suite(
     version = suite.schema_version
     provenance = {}
     if version == 2:
+        for stats in metrics.values():
+            stats["visible_repairs"] = 0
         provenance = {
             case.task_id: {
                 "task_sha256": file_digest(case.task_file),
@@ -247,8 +249,11 @@ def run_suite(
                     }
                 metrics[model]["attempts"] += 1
                 metrics[model]["model_calls"] += record.get("attempts_used", 1)
-                if record.get("first_attempt_improved", record["improved"]):
+                if (record.get("first_attempt_improved", record["improved"])
+                        and (version == 1 or record["improved"])):
                     metrics[model]["first_attempt_repairs"] += 1
+                if version == 2 and record.get("visible_improved") is True:
+                    metrics[model]["visible_repairs"] += 1
                 if record["improved"]:
                     metrics[model]["repaired"] += 1
                     repairs += 1

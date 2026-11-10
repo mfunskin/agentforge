@@ -96,6 +96,7 @@ def test_v2_run_records_provenance_and_verified_repairs(tmp_path):
     assert result["schema_version"] == 2
     assert result["total_attempts"] == 6
     assert result["models"]["reference"]["repaired"] == 6
+    assert result["models"]["reference"]["visible_repairs"] == 6
     records = [json.loads(line) for line in output.read_text().splitlines()]
     assert len(records) == 6
     for record in records:

@@ -53,6 +53,7 @@ def _summary(records: list[dict]) -> dict:
     return {
         "attempts": len(records),
         "repairs": repaired,
+        "visible_repairs": sum(r.get("visible_improved") is True for r in records),
         "rate": repaired / len(records),
         "errors": sum(r.get("error") is not None for r in records),
         "median": statistics.median(durations),
@@ -68,10 +69,9 @@ def render_report(records: list[dict]) -> str:
     lines = [
         "# AgentForge benchmark results",
         "",
-        "Repair rate is the share of attempts where the baseline failed and the candidate passed.",
-        "Failed model calls count as unsuccessful attempts.",
-        "For v2, repair means both public checks and independent verification passed.",
-        "The verification tests are not provided to the agent during generation.",
+        "Repair rate follows the scoring rule for each benchmark suite.",
+        "Version 1 requires public checks to pass. Version 2 also requires independent",
+        "verification to pass, and verification failures are not sent to the agent.",
         "",
     ]
     for suite in sorted(grouped):
@@ -80,16 +80,33 @@ def render_report(records: list[dict]) -> str:
         models: dict[str, list[dict]] = defaultdict(list)
         for record in suite_records:
             models[record["benchmark"]["model"]].append(record)
-        lines.extend([
-            "| Model | Attempts | Repairs | Repair rate | Errors | Median time (s) |",
-            "| --- | ---: | ---: | ---: | ---: | ---: |",
-        ])
+        version2 = any(
+            record["benchmark"].get("suite_version") == 2
+            for record in suite_records
+        )
+        if version2:
+            lines.extend([
+                "| Model | Attempts | Public repairs | Verified repairs | Repair rate | Errors | Median time (s) |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ])
+        else:
+            lines.extend([
+                "| Model | Attempts | Repairs | Repair rate | Errors | Median time (s) |",
+                "| --- | ---: | ---: | ---: | ---: | ---: |",
+            ])
         for model in sorted(models):
             stats = _summary(models[model])
-            lines.append(
-                f"| {_cell(model)} | {stats['attempts']} | {stats['repairs']} | "
-                f"{stats['rate']:.1%} | {stats['errors']} | {stats['median']:.3f} |"
-            )
+            if version2:
+                lines.append(
+                    f"| {_cell(model)} | {stats['attempts']} | {stats['visible_repairs']} | "
+                    f"{stats['repairs']} | {stats['rate']:.1%} | "
+                    f"{stats['errors']} | {stats['median']:.3f} |"
+                )
+            else:
+                lines.append(
+                    f"| {_cell(model)} | {stats['attempts']} | {stats['repairs']} | "
+                    f"{stats['rate']:.1%} | {stats['errors']} | {stats['median']:.3f} |"
+                )
         lines.extend([
             "",
             "### Results by task",

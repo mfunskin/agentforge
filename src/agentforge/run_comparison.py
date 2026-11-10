@@ -72,6 +72,32 @@ def _stats(records: list[dict]) -> dict:
     }
 
 
+def _case_fingerprints(run: Run) -> tuple[int, dict]:
+    """Keep v2 comparisons tied to identical task and verifier contents."""
+    fingerprints = {}
+    versions = set()
+    for record in run.records:
+        info = record["benchmark"]
+        version = info.get("suite_version", 1)
+        if version not in {1, 2}:
+            raise ValueError("Unknown benchmark suite version")
+        versions.add(version)
+        if version == 1:
+            continue
+        hashes = tuple(info.get(field) for field in (
+            "suite_sha256", "task_sha256", "repository_sha256", "verification_sha256",
+        ))
+        if any(not isinstance(value, str) or len(value) != 64 for value in hashes):
+            raise ValueError("Missing or invalid v2 benchmark fingerprints")
+        task = info["task_id"]
+        if task in fingerprints and fingerprints[task] != hashes:
+            raise ValueError("Inconsistent v2 fingerprints within one run")
+        fingerprints[task] = hashes
+    if len(versions) != 1:
+        raise ValueError("Cannot mix suite versions within a run")
+    return versions.pop(), fingerprints
+
+
 def _validate_runs(paths: list[Path], output: Path) -> list[Run]:
     if not 2 <= len(paths) <= 6:
         raise ValueError("Provide between two and six benchmark result files")
@@ -84,11 +110,14 @@ def _validate_runs(paths: list[Path], output: Path) -> list[Run]:
     if len({run.label for run in runs}) != len(runs):
         raise ValueError("Result filenames must have distinct stems")
     first = runs[0]
+    fingerprints = _case_fingerprints(first)
     for run in runs[1:]:
         if run.suite != first.suite:
             raise ValueError("Cannot compare different benchmark suites")
         if run.trials() != first.trials():
             raise ValueError("Runs must contain the same task IDs and trial numbers")
+        if _case_fingerprints(run) != fingerprints:
+            raise ValueError("V2 benchmark fingerprints differ between runs")
     return runs
 
 

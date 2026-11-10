@@ -22,6 +22,9 @@ def classify_result(record: dict) -> str:
     if isinstance(baseline, dict) and baseline.get("passed") is True:
         return "baseline_passed"
     if candidate.get("passed") is True:
+        verification = record.get("verification")
+        if isinstance(verification, dict) and not verification.get("passed"):
+            return "verification_failed"
         return "passed_without_repair"
     return "candidate_check_failed"
 
@@ -37,6 +40,9 @@ def _details(record: dict) -> str:
     candidate = record.get("candidate")
     if not isinstance(candidate, dict):
         return "No candidate result was recorded."
+    verification = record.get("verification")
+    if candidate.get("passed") and isinstance(verification, dict) and not verification.get("passed"):
+        candidate = verification
     parts = []
     for field in ("stdout", "stderr"):
         message = candidate.get(field)
