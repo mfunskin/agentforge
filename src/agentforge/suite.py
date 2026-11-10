@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
 
 from agentforge.comparison import evaluate_agent
 from agentforge.model_agent import ModelCodingAgent, OllamaClient, TextGenerator
