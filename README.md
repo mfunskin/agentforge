@@ -12,6 +12,7 @@ AgentForge is a local-first Python toolkit for reproducible software-engineering
 - Local Ollama model integration for generating and testing code changes.
 - Repeated benchmark suites with functional tests and per-model repair rates.
 - Markdown reports of measured model and task performance.
+- Side-by-side comparisons of saved benchmark experiments.
 - Failure diagnostics for unsuccessful benchmark attempts.
 - Optional test-guided correction attempts with model-call tracking.
 - Read-only repository test context for coding models.
@@ -102,6 +103,22 @@ agentforge benchmark run benchmarks/suites/python_repairs_extended.json \
   --output runs/test_context_benchmarks.jsonl
 
 ```
+
+## Compare benchmark runs
+
+Compare independently saved results without rerunning models:
+
+```bash
+agentforge benchmark compare \
+  runs/extended_benchmarks.jsonl \
+  runs/feedback_benchmarks.jsonl \
+  runs/test_context_benchmarks.jsonl \
+  --output runs/experiment_comparison.md
+
+cat runs/experiment_comparison.md
+```
+
+The comparison uses the first file as the reference. It requires matching task IDs and trial numbers, and reports repair rates, percentage-point differences, model calls, errors and median trial duration. Legacy single-attempt runs count as one model call per trial.
 
 ## Test-guided correction
 
