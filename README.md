@@ -42,10 +42,6 @@ Exit code 0 means inspection/check succeeded; 1 means check failed; 2 means inva
 5. Integrate Kaggle benchmarks subject to each competition's rules.
 6. Publish reproducible baseline-vs-improvement experiments.
 
-## Scope and limitations
-
-The current prototype does not generate patches, call LLMs, or submit to Kaggle. It is a small tested foundation for those future capabilities. The file inventory is bounded but is not hardened against hostile filesystems or concurrent filesystem changes.
-
 ## Data policy
 
 Do not commit Kaggle competition datasets, API keys, proprietary source code, reviewer records, or unpublished research materials. Review competition licensing and sharing rules before integrating datasets or publishing results.
