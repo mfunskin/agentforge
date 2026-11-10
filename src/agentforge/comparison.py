@@ -92,6 +92,7 @@ def evaluate_agent(task_file: Path, agent: CodingAgent, output: Path | None = No
         "created_at": datetime.now(timezone.utc).isoformat(),
         "task": task.as_dict(),
         "agent": type(agent).__name__,
+        "agent_details": agent.metadata() if callable(getattr(agent, "metadata", None)) else {},
         "baseline": baseline,
         "candidate": candidate,
         "improved": not baseline["passed"] and candidate["passed"],

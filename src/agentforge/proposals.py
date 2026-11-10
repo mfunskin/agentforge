@@ -46,6 +46,11 @@ def load_proposal(path: Path) -> tuple[FileEdit, ...]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid proposal JSON: {exc.msg}") from exc
+    return parse_proposal(data)
+
+
+def parse_proposal(data: object) -> tuple[FileEdit, ...]:
+    """Validate a proposal document from disk or a model response."""
     if not isinstance(data, dict):
         raise TypeError("Proposal must be a JSON object")
     if set(data) != {"schema_version", "edits"} or type(data["schema_version"]) is not int:
