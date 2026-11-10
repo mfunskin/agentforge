@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import statistics
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
