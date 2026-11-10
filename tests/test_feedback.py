@@ -177,3 +177,52 @@ def test_invalid_strategy_rejected(tmp_path):
     _, suite, _ = make_fixture(tmp_path)
     with pytest.raises(ValueError, match="strategy"):
         run_suite(suite, ["mock"], strategy="unknown")
+
+
+def test_feedback_retries_include_repo_tests(tmp_path):
+    task, _, _ = make_fixture(tmp_path)
+    model = Replies([proposal(UNCHANGED), proposal(FIXED)])
+    record = evaluate_with_feedback(
+        task, model, ["src/parser.py"], context="tests",
+    )
+    assert record["improved"] is True
+    assert record["agent_details"]["context"] == "tests"
+    assert len(model.prompts) == 2
+    assert all("test_quoted_comma" in prompt for prompt in model.prompts)
+
+
+def test_suite_records_test_context(tmp_path):
+    _, suite, _ = make_fixture(tmp_path)
+    result_file = tmp_path / "runs" / "tests-context.jsonl"
+
+    def make_model(name):
+        return Replies([proposal(FIXED)])
+
+    summary = run_suite(
+        suite, ["mock"], repeats=1, context="tests",
+        client_factory=make_model, output=result_file,
+    )
+    assert summary["context"] == "tests"
+    records = [json.loads(line) for line in result_file.read_text().splitlines()]
+    assert records[0]["benchmark"]["context"] == "tests"
+    assert records[0]["agent_details"]["context"] == "tests"
+
+
+def test_cli_accepts_test_context(tmp_path, capsys, monkeypatch):
+    _, suite, _ = make_fixture(tmp_path)
+    monkeypatch.setattr(
+        "agentforge.suite.OllamaClient",
+        lambda model, timeout: Replies([proposal(FIXED)]),
+    )
+    assert main([
+        "benchmark", "run", str(suite),
+        "--model", "mock", "--repeats", "1",
+        "--context", "tests", "--output", str(tmp_path / "context.jsonl"),
+    ]) == 0
+    assert '"context": "tests"' in capsys.readouterr().out
+
+
+def test_suite_rejects_invalid_context(tmp_path):
+    _, suite, _ = make_fixture(tmp_path)
+    with pytest.raises(ValueError, match="context"):
+        run_suite(suite, ["mock"], context="unknown")

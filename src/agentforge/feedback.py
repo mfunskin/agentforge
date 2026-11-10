@@ -48,12 +48,13 @@ def evaluate_with_feedback(
     files: list[str],
     max_attempts: int = 2,
     output: Path | None = None,
+    context: str = "source",
 ) -> dict:
     """Try a model proposal again after a rejected edit or failed check."""
     if type(max_attempts) is not int or not 1 <= max_attempts <= 5:
         raise ValueError("max_attempts must be an integer between 1 and 5")
     task = load_task(task_file)
-    initial_agent = ModelCodingAgent(generator, files)
+    initial_agent = ModelCodingAgent(generator, files, context=context)
     rounds = []
     changed_files = []
     diffs = []
@@ -70,7 +71,7 @@ def evaluate_with_feedback(
 
         for number in range(1, max_attempts + 1):
             current_generator = FeedbackGenerator(generator, feedback) if feedback else generator
-            agent = ModelCodingAgent(current_generator, files)
+            agent = ModelCodingAgent(current_generator, files, context=context)
             try:
                 edits = agent.propose(workspace_task)
                 difference = apply_edits(workspace, edits)
