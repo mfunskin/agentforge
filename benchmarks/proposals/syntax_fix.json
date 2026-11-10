@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "edits": [
+    {
+      "path": "src/example.py",
+      "content": "def greet():\n    return \"hello\"\n"
+    }
+  ]
+}
