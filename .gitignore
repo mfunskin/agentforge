@@ -12,3 +12,8 @@ runs/
 *.pem
 kaggle.json
 .DS_Store
+
+# Windows metadata
+*:Zone.Identifier
+
+.venv/
