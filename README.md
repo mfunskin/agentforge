@@ -42,10 +42,10 @@ Exit code 0 means inspection/check succeeded; 1 means check failed; 2 means inva
 5. Integrate Kaggle benchmarks subject to each competition's rules.
 6. Publish reproducible baseline-vs-improvement experiments.
 
-## Data policy
+## Data and credentials
 
-Do not commit Kaggle competition datasets, API keys, proprietary source code, reviewer records, or unpublished research materials. Review competition licensing and sharing rules before integrating datasets or publishing results.
+Competition datasets are stored locally and used according to their licensing terms. API keys and other credentials are kept out of version control.
 
-## Development workflow
+## Contributing
 
-Make a GitHub issue for each feature. Implement it in a branch with tests, then open a PR describing problem, design, trade-offs, verification steps and limitations. Keep the commit history authentic.
+Changes are developed in focused branches, tested locally, and reviewed through pull requests. Pull requests summarize what changed and how it was tested.
